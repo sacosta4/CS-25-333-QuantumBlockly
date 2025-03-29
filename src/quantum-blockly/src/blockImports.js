@@ -10,12 +10,12 @@ import './blocks/key_block';
 import './blocks/key_pair';
 import './blocks/key_value';
 import './blocks/merge_dict';
-import './blocks/minimax_blocks';
 import './blocks/quad_dictionary';
 import './blocks/quad_pair';
 import './blocks/qubo_blocks';
 import './blocks/update_dict';
 import './blocks/update_quad_dict';
 import './blocks/value_block';
+import './blocks/raw_text_block'; // Add this new line!
 import './javascriptGenerators';
 import './blocks/pyqubo_blocks';

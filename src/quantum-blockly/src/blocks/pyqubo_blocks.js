@@ -1,6 +1,6 @@
 import Blockly from 'blockly';
 
-// PyQUBO Variable Block
+// PyQUBO Variable Block - Enhanced with all variable types
 Blockly.Blocks['pyqubo_variable'] = {
   init: function() {
     this.jsonInit({
@@ -13,13 +13,23 @@ Blockly.Blocks['pyqubo_variable'] = {
           "options": [
             ["Binary", "Binary"],
             ["Spin", "Spin"],
-            ["Array", "Array"]
+            ["Integer", "Integer"],
+            ["Array", "Array"],
+            ["2D Array", "2DArray"]
           ]
         },
         {
           "type": "field_input",
           "name": "NAME",
-          "text": "x1"
+          "text": "x"
+        }
+      ],
+      "message1": "Properties %1",
+      "args1": [
+        {
+          "type": "input_statement",
+          "name": "PROPERTIES",
+          "check": "VariableProperty"
         }
       ],
       "previousStatement": null,
@@ -31,7 +41,40 @@ Blockly.Blocks['pyqubo_variable'] = {
   }
 };
 
-// PyQUBO Constraint Block
+// Variable Property Block - for Integer bounds and Array size
+Blockly.Blocks['pyqubo_var_property'] = {
+  init: function() {
+    this.jsonInit({
+      "type": "pyqubo_var_property",
+      "message0": "%1 %2",
+      "args0": [
+        {
+          "type": "field_dropdown",
+          "name": "PROPERTY",
+          "options": [
+            ["lower bound", "lower_bound"],
+            ["upper bound", "upper_bound"],
+            ["size", "size"],
+            ["rows", "rows"],
+            ["columns", "columns"]
+          ]
+        },
+        {
+          "type": "input_value",
+          "name": "VALUE",
+          "check": "Number"
+        }
+      ],
+      "previousStatement": "VariableProperty",
+      "nextStatement": "VariableProperty",
+      "colour": 230,
+      "tooltip": "Set a property for a variable",
+      "helpUrl": ""
+    });
+  }
+};
+
+// PyQUBO Constraint Block - Enhanced
 Blockly.Blocks['pyqubo_constraint'] = {
   init: function() {
     this.jsonInit({
@@ -40,7 +83,8 @@ Blockly.Blocks['pyqubo_constraint'] = {
       "args0": [
         {
           "type": "input_value",
-          "name": "LHS"
+          "name": "LHS",
+          "check": ["String", "Number", "Boolean"]
         },
         {
           "type": "field_dropdown",
@@ -55,9 +99,10 @@ Blockly.Blocks['pyqubo_constraint'] = {
         {
           "type": "input_value",
           "name": "RHS",
-          "check": "Number"
+          "check": ["String", "Number", "Boolean"]
         }
       ],
+      "inputsInline": true,
       "previousStatement": null,
       "nextStatement": null,
       "colour": 230,
@@ -67,28 +112,38 @@ Blockly.Blocks['pyqubo_constraint'] = {
   }
 };
 
-// PyQUBO Objective Block
+// PyQUBO Objective Block - Enhanced
 Blockly.Blocks['pyqubo_objective'] = {
   init: function() {
     this.jsonInit({
       "type": "pyqubo_objective",
-      "message0": "Set objective function: %1",
+      "message0": "Set objective to %1 %2",
       "args0": [
         {
+          "type": "field_dropdown",
+          "name": "GOAL",
+          "options": [
+            ["maximize", "maximize"],
+            ["minimize", "minimize"]
+          ]
+        },
+        {
           "type": "input_value",
-          "name": "EXPRESSION"
+          "name": "EXPRESSION",
+          "check": ["String", "Number", "Boolean"]
         }
       ],
+      "inputsInline": true,
       "previousStatement": null,
       "nextStatement": null,
       "colour": 230,
-      "tooltip": "Define the objective function to minimize",
+      "tooltip": "Define the objective function to optimize",
       "helpUrl": ""
     });
   }
 };
 
-// PyQUBO Expression Block
+// PyQUBO Expression Block - Enhanced
 Blockly.Blocks['pyqubo_expression'] = {
   init: function() {
     this.jsonInit({
@@ -97,7 +152,8 @@ Blockly.Blocks['pyqubo_expression'] = {
       "args0": [
         {
           "type": "input_value",
-          "name": "LEFT"
+          "name": "LEFT",
+          "check": ["String", "Number", "Boolean"]
         },
         {
           "type": "field_dropdown",
@@ -112,10 +168,11 @@ Blockly.Blocks['pyqubo_expression'] = {
         },
         {
           "type": "input_value",
-          "name": "RIGHT"
+          "name": "RIGHT",
+          "check": ["String", "Number", "Boolean"]
         }
       ],
-      "output": null,
+      "output": "String",
       "colour": 230,
       "tooltip": "Create a mathematical expression",
       "helpUrl": ""
@@ -123,7 +180,163 @@ Blockly.Blocks['pyqubo_expression'] = {
   }
 };
 
-// PyQUBO Function Block (Updated version of the original function block)
+// Variable Reference Block for expressions
+Blockly.Blocks['pyqubo_var_reference'] = {
+  init: function() {
+    this.jsonInit({
+      "type": "pyqubo_var_reference",
+      "message0": "variable %1",
+      "args0": [
+        {
+          "type": "field_input",
+          "name": "NAME",
+          "text": "x"
+        }
+      ],
+      "output": "String",
+      "colour": 230,
+      "tooltip": "Reference a variable in an expression",
+      "helpUrl": ""
+    });
+  }
+};
+
+// Array Reference Block for expressions
+Blockly.Blocks['pyqubo_array_reference'] = {
+  init: function() {
+    this.jsonInit({
+      "type": "pyqubo_array_reference",
+      "message0": "array %1 [ %2 ]",
+      "args0": [
+        {
+          "type": "field_input",
+          "name": "NAME",
+          "text": "x"
+        },
+        {
+          "type": "input_value",
+          "name": "INDEX",
+          "check": "Number"
+        }
+      ],
+      "output": "String",
+      "colour": 230,
+      "tooltip": "Reference an array element in an expression",
+      "helpUrl": ""
+    });
+  }
+};
+
+// 2D Array Reference Block for expressions
+Blockly.Blocks['pyqubo_2d_array_reference'] = {
+  init: function() {
+    this.jsonInit({
+      "type": "pyqubo_2d_array_reference",
+      "message0": "2D array %1 [ %2 ] [ %3 ]",
+      "args0": [
+        {
+          "type": "field_input",
+          "name": "NAME",
+          "text": "x"
+        },
+        {
+          "type": "input_value",
+          "name": "ROW",
+          "check": "Number"
+        },
+        {
+          "type": "input_value",
+          "name": "COL",
+          "check": "Number"
+        }
+      ],
+      "output": "String",
+      "colour": 230,
+      "tooltip": "Reference a 2D array element in an expression",
+      "helpUrl": ""
+    });
+  }
+};
+
+// Sum of Array Elements Block
+Blockly.Blocks['pyqubo_array_sum'] = {
+  init: function() {
+    this.jsonInit({
+      "type": "pyqubo_array_sum",
+      "message0": "sum of array %1 from %2 to %3",
+      "args0": [
+        {
+          "type": "field_input",
+          "name": "NAME",
+          "text": "x"
+        },
+        {
+          "type": "input_value",
+          "name": "FROM",
+          "check": "Number"
+        },
+        {
+          "type": "input_value",
+          "name": "TO",
+          "check": "Number"
+        }
+      ],
+      "output": "String",
+      "colour": 230,
+      "tooltip": "Calculate the sum of array elements",
+      "helpUrl": ""
+    });
+  }
+};
+
+// PyQUBO Model Function - The main container for a QUBO model
+Blockly.Blocks['pyqubo_model'] = {
+  init: function() {
+    this.jsonInit({
+      "type": "pyqubo_model",
+      "message0": "QUBO Model %1 For function: %2",
+      "args0": [
+        {
+          "type": "input_dummy"
+        },
+        {
+          "type": "field_input",
+          "name": "NAME",
+          "text": "createQuboForSingleMove"
+        }
+      ],
+      "message1": "Variables %1",
+      "args1": [
+        {
+          "type": "input_statement",
+          "name": "VARIABLES",
+          "check": null
+        }
+      ],
+      "message2": "Constraints %1",
+      "args2": [
+        {
+          "type": "input_statement",
+          "name": "CONSTRAINTS",
+          "check": null
+        }
+      ],
+      "message3": "Objective %1",
+      "args3": [
+        {
+          "type": "input_statement",
+          "name": "OBJECTIVE",
+          "check": null
+        }
+      ],
+      "colour": 230,
+      "tooltip": "Create a complete QUBO model",
+      "helpUrl": ""
+    });
+  }
+};
+
+// This keeps backward compatibility with the original PyQUBO function block
 Blockly.Blocks['pyqubo_function'] = {
   init: function() {
     this.jsonInit({
@@ -152,4 +365,20 @@ Blockly.Blocks['pyqubo_function'] = {
       "helpUrl": ""
     });
   }
+};
+
+export default {
+  blocks: [
+    'pyqubo_variable',
+    'pyqubo_var_property',
+    'pyqubo_constraint',
+    'pyqubo_objective',
+    'pyqubo_expression',
+    'pyqubo_var_reference',
+    'pyqubo_array_reference',
+    'pyqubo_2d_array_reference',
+    'pyqubo_array_sum',
+    'pyqubo_model',
+    'pyqubo_function'
+  ]
 };

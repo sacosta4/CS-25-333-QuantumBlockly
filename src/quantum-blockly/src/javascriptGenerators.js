@@ -1,6 +1,5 @@
 import { javascriptGenerator } from 'blockly/javascript';
 import * as javascript from 'blockly/javascript';
-import './blocks/minimax_blocks'; // Ensure blocks are registered before generating code
 import './javascriptGenerators';  // Ensures JavaScript generator is included
 
 
@@ -194,9 +193,9 @@ javascriptGenerator.forBlock['pyqubo_variable'] = function (block, generator) {
   var type = block.getFieldValue('TYPE');
   var name = block.getFieldValue('NAME');
   
-  var code = `variables['${name}'] = { "type": "${type}" };\n`;
+  var code = `variables["${name}"] = { "type": "${type}" };\n`;
   if (type === 'Array') {
-      code += `variables['${name}']['size'] = 10;\n`; // Default size
+      code += `variables["${name}"]["size"] = 10;\n`; // Default size
   }
   
   return code;
@@ -217,14 +216,21 @@ javascriptGenerator.forBlock['pyqubo_constraint'] = function (block, generator) 
   return code;
 };
 
-// New block for PyQUBO objective
-javascriptGenerator.forBlock['pyqubo_objective'] = function (block, generator) {
-  var expr = generator.valueToCode(block, 'EXPRESSION', javascript.Order.ATOMIC);
-  
-  var code = `objective = "${expr}";\n`;
-  
-  return code;
-};
+// Updated PyQUBO Objective Block Generator to work with raw text
+javascriptGenerator.forBlock['pyqubo_objective'] = function(block) {
+    var goal = block.getFieldValue('GOAL');
+    // Get expression without quotes
+    var expression = javascriptGenerator.valueToCode(block, 'EXPRESSION', javascriptGenerator.ORDER_ATOMIC);
+    
+    // For maximize, we negate the objective since PyQUBO minimizes by default
+    const prefix = goal === 'maximize' ? '-(' : '';
+    const suffix = goal === 'maximize' ? ')' : '';
+    
+    // Do not add extra quotes around the expression
+    var code = `objective = "${prefix}${expression}${suffix}";\n`;
+    
+    return code;
+  };
 
 // Improved function block generator
 javascriptGenerator.forBlock['function'] = function (block, generator) {
@@ -264,3 +270,103 @@ javascriptGenerator.forBlock['set_quadratic_weight'] = function(block) {
 javascriptGenerator.forBlock['return_dictionaries'] = function(block) {
   return 'return { "linear": linear, "quadratic": quadratic };\n';
 };
+
+// NEW ENHANCED PYQUBO GENERATORS
+
+// Variable Property Block Generator
+javascriptGenerator.forBlock['pyqubo_var_property'] = function(block) {
+  const property = block.getFieldValue('PROPERTY');
+  const value = javascriptGenerator.valueToCode(block, 'VALUE', javascriptGenerator.ORDER_ATOMIC) || '0';
+  const varName = block.getSurroundParent() ? block.getSurroundParent().getFieldValue('NAME') : 'unknown';
+  
+  return `variables["${varName}"]["${property}"] = ${value};\n`;
+};
+
+// Expression Block Generator
+javascriptGenerator.forBlock['pyqubo_expression'] = function(block) {
+  const left = javascriptGenerator.valueToCode(block, 'LEFT', javascriptGenerator.ORDER_ATOMIC);
+  const operator = block.getFieldValue('OPERATOR');
+  const right = javascriptGenerator.valueToCode(block, 'RIGHT', javascriptGenerator.ORDER_ATOMIC);
+  
+  const code = `(${left} ${operator} ${right})`;
+  return [code, javascriptGenerator.ORDER_ATOMIC];
+};
+
+// Variable Reference Block Generator
+javascriptGenerator.forBlock['pyqubo_var_reference'] = function(block) {
+  const name = block.getFieldValue('NAME');
+  return [name, javascriptGenerator.ORDER_ATOMIC];
+};
+
+// Array Reference Block Generator
+javascriptGenerator.forBlock['pyqubo_array_reference'] = function(block) {
+  const name = block.getFieldValue('NAME');
+  const index = javascriptGenerator.valueToCode(block, 'INDEX', javascriptGenerator.ORDER_ATOMIC);
+  
+  return [`${name}[${index}]`, javascriptGenerator.ORDER_MEMBER];
+};
+
+// 2D Array Reference Block Generator
+javascriptGenerator.forBlock['pyqubo_2d_array_reference'] = function(block) {
+  const name = block.getFieldValue('NAME');
+  const row = javascriptGenerator.valueToCode(block, 'ROW', javascriptGenerator.ORDER_ATOMIC);
+  const col = javascriptGenerator.valueToCode(block, 'COL', javascriptGenerator.ORDER_ATOMIC);
+  
+  return [`${name}[${row}][${col}]`, javascriptGenerator.ORDER_MEMBER];
+};
+
+// Array Sum Block Generator
+javascriptGenerator.forBlock['pyqubo_array_sum'] = function(block) {
+  const name = block.getFieldValue('NAME');
+  const from = javascriptGenerator.valueToCode(block, 'FROM', javascriptGenerator.ORDER_ATOMIC) || '0';
+  const to = javascriptGenerator.valueToCode(block, 'TO', javascriptGenerator.ORDER_ATOMIC) || '0';
+  
+  // Create a string representation of the sum
+  let sumExpr = '(';
+  sumExpr += `${name}[${from}]`;
+  sumExpr += ` + ... + ${name}[${to}]`;
+  sumExpr += ')';
+  
+  return [sumExpr, javascriptGenerator.ORDER_ATOMIC];
+};
+
+// QUBO Model Block Generator
+javascriptGenerator.forBlock['pyqubo_model'] = function(block) {
+  const functionName = block.getFieldValue('NAME');
+  const variables = javascriptGenerator.statementToCode(block, 'VARIABLES');
+  const constraints = javascriptGenerator.statementToCode(block, 'CONSTRAINTS');
+  const objective = javascriptGenerator.statementToCode(block, 'OBJECTIVE');
+  
+  const code = `
+function ${functionName}(board) {
+  // Initialize collections for PyQUBO model
+  const variables = {};
+  const constraints = [];
+  let objective = "0";
+  
+  // Define variables
+  ${variables}
+  
+  // Add constraints
+  ${constraints}
+  
+  // Set objective function
+  ${objective}
+  
+  // Return the complete QUBO model
+  return {
+    "variables": variables,
+    "Constraints": constraints,
+    "Objective": objective
+  };
+}`;
+  
+  return code;
+};
+
+// Add this new generator for raw text block
+javascriptGenerator.forBlock['raw_text'] = function(block) {
+    const text = block.getFieldValue('TEXT');
+    // Return the text without surrounding quotes
+    return [text, javascriptGenerator.ORDER_ATOMIC];
+  };
