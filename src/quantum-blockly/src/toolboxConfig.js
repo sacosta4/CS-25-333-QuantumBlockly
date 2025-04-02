@@ -213,29 +213,16 @@ export const toolboxConfig = {
           }
         },
         
-        // Objective with raw_text
+        // Variable to Expression Bridge Block (NEW)
         { 
           kind: "block", 
-          type: "pyqubo_objective",
-          inputs: {
-            EXPRESSION: {
-              block: {
-                type: "raw_text", // Use our new block here
-                fields: { 
-                  TEXT: "" // Empty by default
-                }
-              }
-            }
-          }
+          type: "variable_to_expression"
         },
         
-        // Add raw_text directly in PyQUBO category for convenience
+        // Objective without auto-included raw text block
         { 
           kind: "block", 
-          type: "raw_text",
-          fields: { 
-            TEXT: "" // Empty by default
-          }
+          type: "pyqubo_objective"
         },
         
         // Variable references

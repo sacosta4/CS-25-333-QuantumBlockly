@@ -364,9 +364,18 @@ function ${functionName}(board) {
   return code;
 };
 
-// Add this new generator for raw text block
+  // Add the corresponding JavaScript generator
+javascriptGenerator.forBlock['variable_to_expression'] = function(block) {
+  const variable = block.getField('VAR').getText();
+  return [variable, javascriptGenerator.ORDER_ATOMIC];
+};
+
+// Update the raw_text generator to be more compatible
 javascriptGenerator.forBlock['raw_text'] = function(block) {
-    const text = block.getFieldValue('TEXT');
-    // Return the text without surrounding quotes
+  const text = block.getFieldValue('TEXT');
+  // Return as either a string or number based on content
+  if (!isNaN(Number(text))) {
     return [text, javascriptGenerator.ORDER_ATOMIC];
-  };
+  }
+  return [text, javascriptGenerator.ORDER_ATOMIC];
+};

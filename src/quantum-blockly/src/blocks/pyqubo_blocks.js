@@ -143,7 +143,7 @@ Blockly.Blocks['pyqubo_objective'] = {
   }
 };
 
-// PyQUBO Expression Block - Enhanced
+// PyQUBO Expression Block - Enhanced with wider compatibility
 Blockly.Blocks['pyqubo_expression'] = {
   init: function() {
     this.jsonInit({
@@ -153,7 +153,7 @@ Blockly.Blocks['pyqubo_expression'] = {
         {
           "type": "input_value",
           "name": "LEFT",
-          "check": ["String", "Number", "Boolean"]
+          "check": ["String", "Number", "Boolean", "Variable"] // Add Variable type
         },
         {
           "type": "field_dropdown",
@@ -169,10 +169,10 @@ Blockly.Blocks['pyqubo_expression'] = {
         {
           "type": "input_value",
           "name": "RIGHT",
-          "check": ["String", "Number", "Boolean"]
+          "check": ["String", "Number", "Boolean", "Variable"] // Add Variable type
         }
       ],
-      "output": "String",
+      "output": ["String", "Number"], // Multiple output types
       "colour": 230,
       "tooltip": "Create a mathematical expression",
       "helpUrl": ""
@@ -180,7 +180,7 @@ Blockly.Blocks['pyqubo_expression'] = {
   }
 };
 
-// Variable Reference Block for expressions
+// Variable Reference Block with math compatibility
 Blockly.Blocks['pyqubo_var_reference'] = {
   init: function() {
     this.jsonInit({
@@ -193,7 +193,7 @@ Blockly.Blocks['pyqubo_var_reference'] = {
           "text": "x"
         }
       ],
-      "output": "String",
+      "output": ["String", "Number"], // Add Number type for math compatibility
       "colour": 230,
       "tooltip": "Reference a variable in an expression",
       "helpUrl": ""
@@ -201,7 +201,7 @@ Blockly.Blocks['pyqubo_var_reference'] = {
   }
 };
 
-// Array Reference Block for expressions
+// Array Reference Block with math compatibility
 Blockly.Blocks['pyqubo_array_reference'] = {
   init: function() {
     this.jsonInit({
@@ -219,7 +219,7 @@ Blockly.Blocks['pyqubo_array_reference'] = {
           "check": "Number"
         }
       ],
-      "output": "String",
+      "output": ["String", "Number"], // Add Number type for math compatibility
       "colour": 230,
       "tooltip": "Reference an array element in an expression",
       "helpUrl": ""
@@ -227,7 +227,28 @@ Blockly.Blocks['pyqubo_array_reference'] = {
   }
 };
 
-// 2D Array Reference Block for expressions
+// Create a bridge block for standard Blockly variables
+Blockly.Blocks['variable_to_expression'] = {
+  init: function() {
+    this.jsonInit({
+      "type": "variable_to_expression",
+      "message0": "use variable %1 in expression",
+      "args0": [
+        {
+          "type": "field_variable",
+          "name": "VAR",
+          "variable": "item"
+        }
+      ],
+      "output": ["String", "Number"],
+      "colour": 230,
+      "tooltip": "Use a standard variable in quantum expressions",
+      "helpUrl": ""
+    });
+  }
+};
+
+// 2D Array Reference Block with math compatibility
 Blockly.Blocks['pyqubo_2d_array_reference'] = {
   init: function() {
     this.jsonInit({
@@ -250,7 +271,7 @@ Blockly.Blocks['pyqubo_2d_array_reference'] = {
           "check": "Number"
         }
       ],
-      "output": "String",
+      "output": ["String", "Number"], // Add Number type for math compatibility
       "colour": 230,
       "tooltip": "Reference a 2D array element in an expression",
       "helpUrl": ""
@@ -281,7 +302,7 @@ Blockly.Blocks['pyqubo_array_sum'] = {
           "check": "Number"
         }
       ],
-      "output": "String",
+      "output": ["String", "Number"], // Add Number type for compatibility
       "colour": 230,
       "tooltip": "Calculate the sum of array elements",
       "helpUrl": ""
@@ -379,6 +400,7 @@ export default {
     'pyqubo_2d_array_reference',
     'pyqubo_array_sum',
     'pyqubo_model',
-    'pyqubo_function'
+    'pyqubo_function',
+    'variable_to_expression'  // Add the new bridge block
   ]
 };

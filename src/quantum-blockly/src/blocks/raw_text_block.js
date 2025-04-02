@@ -13,7 +13,7 @@ Blockly.Blocks['raw_text'] = {
           "text": "" // Empty by default
         }
       ],
-      "output": "String",
+      "output": ["String", "Number"],  // Support both string and number outputs
       "colour": 160,
       "tooltip": "Text without quotes for expressions",
       "helpUrl": ""
