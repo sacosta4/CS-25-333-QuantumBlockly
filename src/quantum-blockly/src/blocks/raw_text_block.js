@@ -1,6 +1,6 @@
 import Blockly from 'blockly';
 
-// Define a new block for raw text (without quotes)
+// Define a new block for raw text
 Blockly.Blocks['raw_text'] = {
   init: function() {
     this.jsonInit({
@@ -10,7 +10,7 @@ Blockly.Blocks['raw_text'] = {
         {
           "type": "field_input",
           "name": "TEXT",
-          "text": "" // Empty by default
+          "text": "" 
         }
       ],
       "output": ["String", "Number"],  // Support both string and number outputs

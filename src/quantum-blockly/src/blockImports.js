@@ -12,7 +12,6 @@ import './blocks/key_value';
 import './blocks/merge_dict';
 import './blocks/quad_dictionary';
 import './blocks/quad_pair';
-import './blocks/qubo_blocks';
 import './blocks/update_dict';
 import './blocks/update_quad_dict';
 import './blocks/value_block';

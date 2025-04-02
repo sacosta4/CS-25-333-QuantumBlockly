@@ -131,40 +131,6 @@ export const toolboxConfig = {
     },
     {
       kind: "category",
-      name: "Quantum",
-      colour: "245",
-      contents: [
-        { kind: "block", type: "dictionary" },
-        { kind: "block", type: "update_dict" },
-        { kind: "block", type: "quad_dictionary" },
-        { kind: "block", type: "update_quad_dict" },
-        { kind: "block", type: "merge_dict" },
-        { kind: "block", type: "key_value" },
-        { kind: "block", type: "quad_pair" },
-        { kind: "block", type: "key_block" },
-        { kind: "block", type: "value_block" },
-        { kind: "block", type: "dictionary_block" },
-        { kind: "block", type: "const_block" },
-        { kind: "block", type: "board_length" },
-        { kind: "block", type: "check_index" },
-        { kind: "block", type: "key_pair" },
-        { kind: "block", type: "function" },
-        { kind: "block", type: "board" }
-      ]
-    },
-    {
-      kind: "category",
-      name: "QUBO Blocks",
-      colour: "#5C81A6",
-      contents: [
-        { kind: "block", type: "init_dictionaries" },
-        { kind: "block", type: "set_linear_weight" },
-        { kind: "block", type: "set_quadratic_weight" },
-        { kind: "block", type: "return_dictionaries" }
-      ]
-    },
-    {
-      kind: "category",
       name: "PyQUBO",
       colour: "#4169E1", // Royal Blue
       contents: [
@@ -224,7 +190,7 @@ export const toolboxConfig = {
           kind: "block", 
           type: "pyqubo_objective"
         },
-        
+
         // Variable references
         { kind: "block", type: "pyqubo_var_reference" },
         { 
