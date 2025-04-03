@@ -493,16 +493,19 @@ return (
           <div>Player 2 (O): {renderScoreboard(playerWins.O, 'O')}</div>
         </div>
 
-        <div className="board">
-          {cells.map((cell, index) => (
-            <div
-              key={index}
-              className="cell"
-              onClick={() => handleCellClick(index)}
-            >
-              {cell}
-            </div>
-          ))}
+        {/* Board with responsive styling */}
+        <div className="board-container">
+          <div className="board">
+            {cells.map((cell, index) => (
+              <div
+                key={index}
+                className="cell"
+                onClick={() => handleCellClick(index)}
+              >
+                {cell}
+              </div>
+            ))}
+          </div>
         </div>
 
         <p className="turn-indicator">{turnIndicator}</p>

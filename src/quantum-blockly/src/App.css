@@ -1,11 +1,18 @@
+/* App.css Additions */
+
+/* Center the Quantum Blockly header */
 h1 {
-  text-align: center
+  text-align: center;
+  margin: 15px auto;
+  width: 100%;
 }
 
+/* Adjust the main layout to ensure logs are below games */
 .main {
   display: flex;
   flex-direction: row;
   justify-content: space-evenly;
+  width: 100%;
 }
 
 .vertical-div {
@@ -16,8 +23,81 @@ h1 {
   width: 50%;
 }
 
+/* Game container changes - ensure game is fully visible */
+.game-container {
+  height: auto; /* Change from 100% to auto to avoid fixed height */
+  min-height: 500px; /* Give it enough space for the game */
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  margin-bottom: 20px; /* Add space between game and log */
+}
+
+/* Log container - position below the game */
+.log-container {
+  width: 90%;
+  height: auto; /* Allow it to take required space */
+  margin-top: 20px; /* Ensure space after the game */
+  position: relative; /* Ensure it stays in the document flow */
+}
+
+/* Center game setup menus */
+.setup {
+  padding: 15px;
+  background-color: #ffffff;
+  border-radius: 10px;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+  margin: 15px auto; /* Center horizontally */
+  width: 90%;
+  max-width: 400px;
+  text-align: center;
+}
+
+.mode-selection {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  margin: 20px auto;
+  width: 100%;
+}
+
+/* Ensure the container doesn't hide buttons */
+.container {
+  margin-bottom: 15px;
+  padding-bottom: 15px;
+}
+
+/* Make sure controls are visible */
 .controls {
-    font-size: 1.5rem;
-    font-weight: bold;
-    color: #1e90ff;
+  margin-bottom: 20px;
+  width: 100%;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+}
+
+/* For mobile screens, stack the layout */
+@media (max-width: 1200px) {
+  .main {
+    flex-direction: column;
+  }
+  
+  .vertical-div {
+    width: 100%;
+    max-width: 800px;
+    margin: 0 auto;
+  }
+  
+  .game-container {
+    min-height: auto; /* Let it adjust to content on mobile */
+    margin-bottom: 15px;
+  }
+  
+  .log-container {
+    width: 95%;
+  }
 }

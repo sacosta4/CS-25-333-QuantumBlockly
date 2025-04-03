@@ -86,31 +86,6 @@ def parse_objective(objective_expr, variables):
         print(f"Error parsing objective: {objective_expr}, Error: {e}")
         return None
 
-def create_fallback_qubo(board_size=9):
-    """Create a fallback QUBO with positive values if normal processing fails."""
-    print("Creating fallback QUBO with positive values")
-    qubo = {}
-    offset = 1
-    
-    # Create simple QUBO with diagonal elements
-    # Use positive values (higher = better)
-    for i in range(board_size):
-        var_name = f"('x{i}', 'x{i}')"
-        # Center is best, then corners, then edges
-        if i == 4:  # Center
-            qubo[var_name] = 9  # Highest weight
-        elif i in [0, 2, 6, 8]:  # Corners
-            qubo[var_name] = 7  # Second highest
-        else:  # Edges
-            qubo[var_name] = 5  # Lowest weight
-        
-        # Add quadratic terms as penalties
-        for j in range(i+1, board_size):
-            qubo_key = f"('x{i}', 'x{j}')"
-            qubo[qubo_key] = -4  # Negative penalty for selecting multiple positions
-    
-    return qubo, offset
-
 @app.route('/quantum', methods=['POST'])
 def calculate():
     try:
@@ -118,177 +93,70 @@ def calculate():
         data = request.json
         print("Received QUBO data:", json.dumps(data, indent=2))
         
-        # Track if we're using fallback and why
-        using_fallback = False
-        fallback_reason = ""
-        original_data = None  # Store original QUBO for educational purposes
-        
         if not data:
-            print("Error: No JSON data received, using fallback")
-            using_fallback = True
-            fallback_reason = "No valid QUBO data received"
-            fallback_qubo, fallback_offset = create_fallback_qubo()
-            
-            explanation = {
-                "highlights": [
-                    f"Using fallback QUBO: {fallback_reason}",
-                    "The fallback strategy assigns higher values to better positions",
-                    "Center (9) > Corners (7) > Edges (5)"
-                ],
-                "method": "classical_fallback",
-                "problem_type": "tic_tac_toe_strategy",
-                "user_qubo_error": fallback_reason,
-                "using_fallback": True
-            }
-            
+            print("Error: No JSON data received")
             return jsonify({
-                'qubo': fallback_qubo, 
-                'offset': fallback_offset,
-                'explanation': explanation
-            }), 200
+                'error': 'No valid QUBO data received', 
+                'status': 'error'
+            }), 400
         
         # Check for required fields and provide helpful error messages
         if "variables" not in data or not data["variables"]:
-            print("Error: Missing or empty 'variables' field, using fallback")
-            using_fallback = True
-            fallback_reason = "Missing or empty 'variables' field"
-            fallback_qubo, fallback_offset = create_fallback_qubo()
-            
-            explanation = {
-                "highlights": [
-                    f"Using fallback QUBO: {fallback_reason}",
-                    "Your QUBO model needs variables defined with type: 'Binary'",
-                    "Example: { 'x0': { 'type': 'Binary' }, 'x1': { 'type': 'Binary' } }"
-                ],
-                "method": "classical_fallback",
-                "problem_type": "tic_tac_toe_strategy",
-                "user_qubo_error": fallback_reason,
-                "user_qubo_data": data,
-                "using_fallback": True
-            }
-            
+            print("Error: Missing or empty 'variables' field")
             return jsonify({
-                'qubo': fallback_qubo, 
-                'offset': fallback_offset,
-                'explanation': explanation
-            }), 200
+                'error': 'Missing or empty "variables" field',
+                'status': 'error',
+                'details': 'Your QUBO model needs variables defined with type: "Binary"'
+            }), 400
         
         try:
             # Validate variable format
             for var_name, var_def in data["variables"].items():
                 if not isinstance(var_def, dict) or "type" not in var_def:
                     print(f"Error: Invalid variable definition for {var_name}: {var_def}")
-                    using_fallback = True
-                    fallback_reason = f"Invalid variable definition for {var_name}"
-                    break
+                    return jsonify({
+                        'error': f'Invalid variable definition for {var_name}',
+                        'status': 'error',
+                        'details': 'Each variable must include a "type" field'
+                    }), 400
                 
                 if var_def["type"] not in ["Binary", "Spin"]:
                     print(f"Error: Unsupported variable type: {var_def['type']}")
-                    using_fallback = True
-                    fallback_reason = f"Unsupported variable type: {var_def['type']}"
-                    break
-            
-            if using_fallback:
-                fallback_qubo, fallback_offset = create_fallback_qubo()
-                explanation = {
-                    "highlights": [
-                        f"Using fallback QUBO: {fallback_reason}",
-                        "Variables must have type 'Binary' for Tic-Tac-Toe",
-                        "Check your variable definitions"
-                    ],
-                    "method": "classical_fallback",
-                    "problem_type": "tic_tac_toe_strategy",
-                    "user_qubo_error": fallback_reason,
-                    "user_qubo_data": data,
-                    "using_fallback": True
-                }
-                
-                return jsonify({
-                    'qubo': fallback_qubo, 
-                    'offset': fallback_offset,
-                    'explanation': explanation
-                }), 200
+                    return jsonify({
+                        'error': f'Unsupported variable type: {var_def["type"]}',
+                        'status': 'error',
+                        'details': 'Variables must have type "Binary" or "Spin"'
+                    }), 400
             
             # Parse quantum variables
             variables = parse_variables(data.get("variables", {}))
             if variables is None:
                 print("Error: Failed to parse variables")
-                using_fallback = True
-                fallback_reason = "Failed to parse variables"
-                fallback_qubo, fallback_offset = create_fallback_qubo()
-                
-                explanation = {
-                    "highlights": [
-                        f"Using fallback QUBO: {fallback_reason}",
-                        "Check variable names and types",
-                        "Variables should be named like 'x0', 'x1', etc."
-                    ],
-                    "method": "classical_fallback",
-                    "problem_type": "tic_tac_toe_strategy",
-                    "user_qubo_error": fallback_reason,
-                    "user_qubo_data": data,
-                    "using_fallback": True
-                }
-                
                 return jsonify({
-                    'qubo': fallback_qubo, 
-                    'offset': fallback_offset,
-                    'explanation': explanation
-                }), 200
+                    'error': 'Failed to parse variables',
+                    'status': 'error',
+                    'details': 'Check variable names and types'
+                }), 400
             
             # Parse constraints
             constraints = parse_constraints(data.get("Constraints", []), variables)
             if constraints is None:
                 print("Error: Failed to parse constraints")
-                using_fallback = True
-                fallback_reason = "Failed to parse constraints"
-                fallback_qubo, fallback_offset = create_fallback_qubo()
-                
-                explanation = {
-                    "highlights": [
-                        f"Using fallback QUBO: {fallback_reason}",
-                        "Check constraint format",
-                        "Each constraint needs 'lhs', 'comparison', and 'rhs' fields"
-                    ],
-                    "method": "classical_fallback",
-                    "problem_type": "tic_tac_toe_strategy",
-                    "user_qubo_error": fallback_reason,
-                    "user_qubo_data": data,
-                    "using_fallback": True
-                }
-                
                 return jsonify({
-                    'qubo': fallback_qubo, 
-                    'offset': fallback_offset,
-                    'explanation': explanation
-                }), 200
+                    'error': 'Failed to parse constraints',
+                    'status': 'error',
+                    'details': 'Check constraint format. Each constraint needs "lhs", "comparison", and "rhs" fields'
+                }), 400
             
             # Parse objective function
             objective = parse_objective(data.get("Objective", "0"), variables)
             if objective is None:
                 print("Error: Failed to parse objective function")
-                using_fallback = True
-                fallback_reason = "Failed to parse objective function"
-                fallback_qubo, fallback_offset = create_fallback_qubo()
-                
-                explanation = {
-                    "highlights": [
-                        f"Using fallback QUBO: {fallback_reason}",
-                        "Check your objective expression syntax",
-                        "Example: '3 * x0 + 2 * x1 - x2'"
-                    ],
-                    "method": "classical_fallback",
-                    "problem_type": "tic_tac_toe_strategy",
-                    "user_qubo_error": fallback_reason,
-                    "user_qubo_data": data,
-                    "using_fallback": True
-                }
-                
                 return jsonify({
-                    'qubo': fallback_qubo, 
-                    'offset': fallback_offset,
-                    'explanation': explanation
-                }), 200
+                    'error': 'Failed to parse objective function',
+                    'status': 'error',
+                    'details': 'Check your objective expression syntax'
+                }), 400
             
             # Add a dummy variable if objective is just a constant
             if isinstance(objective, (int, float)):
@@ -307,20 +175,14 @@ def calculate():
                 # Convert tuple keys to strings
                 qubo_str_keys = {str(k): v for k, v in qubo.items()}
                 
-                # STEP 3: Check that QUBO has values
+                # Check that QUBO has values
                 if not qubo_str_keys or len(qubo_str_keys) == 0:
-                    print("Warning: Empty QUBO generated, using fallback")
-                    fallback_qubo, fallback_offset = create_fallback_qubo()
+                    print("Error: Empty QUBO generated")
                     return jsonify({
-                        'qubo': fallback_qubo,
-                        'offset': fallback_offset,
-                        'explanation': {
-                            "highlights": ["Using fallback QUBO due to empty result"],
-                            "using_fallback": True,
-                            "method": "classical_fallback",
-                            "problem_type": "tic_tac_toe_strategy"
-                        }
-                    }), 200
+                        'error': 'Empty QUBO model generated',
+                        'status': 'error',
+                        'details': 'Your model did not generate any valid QUBO terms'
+                    }), 400
                 
                 # Simple analysis of the QUBO for educational purposes
                 explanation = {
@@ -328,8 +190,7 @@ def calculate():
                     "method": "quantum_annealing",
                     "problem_type": "binary_quadratic_optimization",
                     "variable_count": len(variables),
-                    "constraint_count": len(constraints) if constraints else 0,
-                    "using_fallback": False
+                    "constraint_count": len(constraints) if constraints else 0
                 }
                 
                 # Add analysis of the variables and optimal choice
@@ -364,87 +225,31 @@ def calculate():
                 print(f"QUBO compilation error: {str(e)}")
                 traceback.print_exc()
                 
-                using_fallback = True
-                fallback_reason = f"QUBO compilation error: {str(e)}"
-                original_data = data  # Store original data for educational purposes
-                
-                fallback_qubo, fallback_offset = create_fallback_qubo()
-                
-                explanation = {
-                    "highlights": [
-                        f"Using fallback QUBO: {fallback_reason}",
-                        "Your QUBO model could not be compiled",
-                        "Make sure your objective uses the variables you defined"
-                    ],
-                    "method": "classical_fallback",
-                    "problem_type": "tic_tac_toe_strategy",
-                    "user_qubo_error": fallback_reason,
-                    "user_qubo_data": {
-                        "variables": list(variables.keys()) if variables else [],
-                        "objective": str(objective) if objective else "None",
-                        "constraints": [str(c) for c in constraints] if constraints else []
-                    },
-                    "using_fallback": True
-                }
-                
                 return jsonify({
-                    'qubo': fallback_qubo, 
-                    'offset': fallback_offset,
-                    'explanation': explanation
-                }), 200
+                    'error': f'QUBO compilation error: {str(e)}',
+                    'status': 'error',
+                    'details': 'Your QUBO model could not be compiled. Make sure your objective uses the variables you defined'
+                }), 400
             
         except Exception as e:
             print(f"Processing error: {e}")
             traceback.print_exc()
             
-            # Instead of returning error, provide a fallback QUBO
-            fallback_qubo, fallback_offset = create_fallback_qubo()
-            print("Using fallback QUBO due to error")
-            
-            explanation = {
-                "highlights": [
-                    f"Using fallback QUBO due to processing error: {str(e)}",
-                    "The fallback strategy prioritizes the center, then corners, then edges",
-                    "This provides a reasonable move selection without quantum computation"
-                ],
-                "method": "classical_fallback",
-                "problem_type": "tic_tac_toe_strategy",
-                "user_qubo_error": str(e),
-                "user_qubo_data": data,
-                "using_fallback": True
-            }
-            
             return jsonify({
-                'qubo': fallback_qubo, 
-                'offset': fallback_offset,
-                'explanation': explanation
-            }), 200
+                'error': f'Processing error: {str(e)}',
+                'status': 'error',
+                'details': 'An error occurred while processing your QUBO model'
+            }), 400
 
     except Exception as e:
         print(f"Unexpected error: {e}")
         traceback.print_exc()
         
-        # Generate a fallback QUBO instead of returning an error
-        fallback_qubo, fallback_offset = create_fallback_qubo()
-        print("Using fallback QUBO due to unexpected error")
-        
-        explanation = {
-            "highlights": [
-                f"Using fallback QUBO due to unexpected error: {str(e)}",
-                "The fallback strategy follows classical Tic-Tac-Toe strategy",
-                "Center > Corners > Edges"
-            ],
-            "method": "classical_fallback",
-            "problem_type": "tic_tac_toe_strategy",
-            "user_qubo_error": str(e),
-            "using_fallback": True
-        }
-        
         return jsonify({
-            'qubo': fallback_qubo, 
-            'offset': fallback_offset,
-            'explanation': explanation
-        }), 200
+            'error': f'Unexpected error: {str(e)}',
+            'status': 'error',
+            'details': 'An unexpected error occurred on the server'
+        }), 500
 
 @app.route('/api/workspaces', methods=['GET', 'POST'])
 def manage_workspaces():

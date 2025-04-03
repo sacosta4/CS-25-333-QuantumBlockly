@@ -49,12 +49,13 @@ function MainComponent() {
   
   // Game container styling to ensure consistent appearance
   const gameContainerStyle = {
+    width: '100%',
     height: '50%',
     display: 'flex',
     flexDirection: 'column',
     alignItems: 'center',
     justifyContent: 'flex-start',
-    overflowY: 'auto'
+    overflow: 'visible' // Change from 'auto' to 'visible'
   };
 
   // Helper to get current game name
@@ -93,7 +94,7 @@ function MainComponent() {
         </div>
         
         <div className="vertical-div">
-          <div style={gameContainerStyle}>
+          <div style={gameContainerStyle} className="game-container">
             {game === 0 && (
               <TicTacToe quboCode={code} log={logHandler}/>
             )}
@@ -108,7 +109,7 @@ function MainComponent() {
             )}
           </div>
           
-          <div style={{width: '90%', height:'50%'}}>
+          <div className="log-container">
             <DisplayComponent heading="Log" text={log} bColor='black' />
           </div>
         </div>
@@ -130,21 +131,23 @@ function App() {
       styleEl.innerHTML = `
         .container {
           text-align: center;
-          font-family: 'Comic Sans MS', cursive, sans-serif;
+          font-family: 'Arial', sans-serif;
           color: #333;
           background-color: #f0f8ff;
-          padding: 10px;
+          padding: 15px;
           border-radius: 10px;
           width: 100%;
-          max-width: 700px;
+          max-width: 600px;
           margin: 0 auto;
           box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+          overflow: visible;
         }
         .ticboard {
           display: grid;
           grid-template-columns: repeat(3, 1fr);
-          gap: 10px;
-          margin: 20px auto;
+          gap: 8px;
+          margin: 15px auto;
+          width: 100%;
           max-width: 300px;
         }
         .cell {
@@ -154,8 +157,7 @@ function App() {
           display: flex;
           align-items: center;
           justify-content: center;
-          width: 100px;
-          height: 100px;
+          aspect-ratio: 1 / 1;
           border-radius: 10px;
           cursor: pointer;
           transition: background-color 0.2s ease;
@@ -176,22 +178,44 @@ function App() {
         }
         .board {
           display: grid;
-          grid-template-columns: repeat(7, 75px);
-          grid-template-rows: repeat(6, 75px);
-          gap: 10px;
-          margin: 20px auto;
-          max-width: 550px;
+          grid-template-columns: repeat(7, minmax(40px, 65px));
+          grid-template-rows: repeat(6, minmax(40px, 65px));
+          gap: 5px;
+          margin: 15px auto;
+          width: fit-content;
+          justify-content: center;
         }
-        .fallback-indicator {
-          background-color: #fff3cd;
-          color: #856404;
+        .error-indicator {
+          background-color: #f8d7da;
+          color: #721c24;
           padding: 10px;
           border-radius: 5px;
           margin-bottom: 10px;
-          border-left: 5px solid #ffeeba;
+          border-left: 5px solid #f5c6cb;
           width: 90%;
           max-width: 500px;
           text-align: left;
+        }
+        
+        /* Media queries for better responsiveness */
+        @media (max-width: 768px) {
+          .board {
+            grid-template-columns: repeat(7, minmax(35px, 55px));
+            grid-template-rows: repeat(6, minmax(35px, 55px));
+          }
+          .cell {
+            font-size: 1.8rem;
+          }
+        }
+        
+        @media (max-width: 480px) {
+          .board {
+            grid-template-columns: repeat(7, minmax(30px, 45px));
+            grid-template-rows: repeat(6, minmax(30px, 45px));
+          }
+          .cell {
+            font-size: 1.5rem;
+          }
         }
       `;
       document.head.appendChild(styleEl);
