@@ -12,6 +12,7 @@ Main Component that contains the main content section of the app
 function MainComponent() {
   const [code, setCode] = useState(''); //setting up a state for the generated code
   const [log, setLog] = useState('');
+  const [showLog, setShowLog] = useState(true); // state for collapsing log display
 
   const codeHandler = (code) => { //this code handler will be passed into the BlocklyComponent, and will set the state of the code for the main component
     setCode(code);
@@ -108,15 +109,23 @@ function MainComponent() {
               </div>
             )}
           </div>
+
+          {/* Toggle log display */}
+          <button onClick={() => setShowLog(prev => !prev)} style={{ margin: '10px 0' }}>
+            {showLog ? "Hide Log" : "Show Log"}
+          </button>
           
-          <div className="log-container">
-            <DisplayComponent heading="Log" text={log} bColor='black' />
-          </div>
+          {showLog && (
+            <div className="log-container">
+              <DisplayComponent heading="Log" text={log} bColor='black' />
+            </div>
+          )}
         </div>
       </div>
     </>
   );
 }
+
 
 /*
 Root Component that comprises the entire app
