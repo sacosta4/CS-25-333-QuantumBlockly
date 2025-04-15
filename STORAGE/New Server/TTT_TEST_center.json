@@ -1,0 +1,22 @@
+{
+    "variables": {
+      "x0": { "type": "Binary" },
+      "x1": { "type": "Binary" },
+      "x2": { "type": "Binary" },
+      "x3": { "type": "Binary" },
+      "x4": { "type": "Binary" },
+      "x5": { "type": "Binary" },
+      "x6": { "type": "Binary" },
+      "x7": { "type": "Binary" },
+      "x8": { "type": "Binary" }
+    },
+    "Constraints": [
+      {
+        "lhs": "x0 + x1 + x2 + x3 + x4 + x5 + x6 + x7 + x8",
+        "comparison": "=",
+        "rhs": 1
+      }
+    ],
+    "Objective": "-x4 * 5 - x0 * 1 - x8 * 2"
+  }
+  

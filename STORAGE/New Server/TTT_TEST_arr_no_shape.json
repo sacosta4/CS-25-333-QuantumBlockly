@@ -1,0 +1,12 @@
+{
+    "variables": {
+      "arr": {
+        "type": "Array"
+      }
+    },
+    "Constraints": [
+      { "lhs": "arr_0 + arr_1", "comparison": "=", "rhs": 1 }
+    ],
+    "Objective": "arr_0"
+  }
+  

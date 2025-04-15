@@ -1,0 +1,18 @@
+{
+    "variables": {
+      "x": {
+        "type": "Unary",
+        "lower": 1,
+        "upper": 6
+      }
+    },
+    "Constraints": [
+      {
+        "lhs": "2 * x + 5",
+        "comparison": "=",
+        "rhs": 13
+      }
+    ],
+    "Objective": "x * x - 3 * x + 2"
+  }
+  

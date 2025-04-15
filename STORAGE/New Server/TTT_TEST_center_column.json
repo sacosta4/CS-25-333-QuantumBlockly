@@ -1,0 +1,15 @@
+{
+  "variables": {
+    "x1": { "type": "Binary" },
+    "x4": { "type": "Binary" },
+    "x7": { "type": "Binary" }
+  },
+  "Constraints": [
+    {
+      "lhs": "x1 + x4 + x7",
+      "comparison": "=",
+      "rhs": 1
+    }
+  ],
+  "Objective": "-x1 - x4 - x7"
+}
