@@ -160,25 +160,13 @@ def calculate():
             if value == 1:
                 solution = key
                 break
-        decoded_values = {}
-        for var_name in data["variables"]:
-            var_info = data["variables"][var_name]
-            if var_info.get("type", "").lower() == "unary":
-                lower = var_info["lower"]
-                upper = var_info["upper"]
-                n = upper - lower + 1
-                value = 0
-                for i in range(n):
-                    if best_sample.get(f"{var_name}[{i}]", 0) == 1:
-                        value += 1
-                decoded_values[var_name] = value
+            
 
         return jsonify({
             'qubo': qubo_str_keys,
             'offset': offset,
             'solution': solution,
-            'sample': {k: int(v) for k, v in best_sample.items()},
-            'decoded': decoded_values
+            'sample': {k: int(v) for k, v in best_sample.items()}
         }), 200
 
     except Exception as e:
