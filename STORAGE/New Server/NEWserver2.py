@@ -69,7 +69,7 @@ def parse_variables(variable_data):
             for i in range(n):
                 label = f"{var_name}[{i}]"
                 bit = Binary(label)
-                expressions[label] = bit   # <-- this is what was missing
+                expressions[label] = bit
                 bits.append(bit)
 
             expressions[var_name] = sum(bits)
