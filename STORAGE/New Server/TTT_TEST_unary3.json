@@ -1,0 +1,14 @@
+{
+    "variables": {
+      "x": {
+        "type": "Unary",
+        "lower": 0,
+        "upper": 3
+      }
+    },
+    "Constraints": [
+      { "lhs": "x", "comparison": "=", "rhs": 1 }
+    ],
+    "Objective": "x"
+  }
+  
