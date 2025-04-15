@@ -42,7 +42,7 @@ export const toolboxConfig = {
       name: "Math",
       categorystyle: "math_category",
       contents: [
-        { kind: "block", type: "math_number", fields: { NUM: 123 } },
+        { kind: "block", type: "math_number" },
         { kind: "block", type: "math_arithmetic" },
         { kind: "block", type: "math_single" },
         { kind: "block", type: "math_trig" },
@@ -64,13 +64,7 @@ export const toolboxConfig = {
       contents: [
         { kind: "block", type: "text" },
         { kind: "block", type: "text_multiline" },
-        { 
-          kind: "block", 
-          type: "raw_text",
-          fields: { 
-            TEXT: "" // Empty by default
-          }
-        },
+        { kind: "block", type: "raw_text" },
         { kind: "block", type: "text_join" },
         { kind: "block", type: "text_append" },
         { kind: "block", type: "text_length" },
@@ -159,86 +153,18 @@ export const toolboxConfig = {
         // Single variable
         { 
           kind: "block", 
-          type: "pyqubo_variable",
-          inputs: {
-            PROPERTIES: {
-              block: {
-                type: "pyqubo_var_property",
-                fields: { PROPERTY: "lower_bound" },
-                inputs: {
-                  VALUE: {
-                    shadow: { type: "math_number", fields: { NUM: 0 } }
-                  }
-                }
-              }
-            }
-          }
+          type: "pyqubo_variable"
         },
         // Array variable
         { 
           kind: "block", 
-          type: "pyqubo_array_variable",
-          fields: { 
-            NAME: "x",
-            VARTYPE: "Binary"
-          },
-          inputs: {
-            SHAPE: {
-              shadow: { 
-                type: "math_number", 
-                fields: { NUM: 9 }  // Default to 9 for TicTacToe
-              }
-            }
-          }
+          type: "pyqubo_array_variable"
         },
-        // 2D Array shape input block - NEW ADDITION
+        // 2D Array shape input block
         { 
           kind: "block", 
-          type: "array_shape_input",
-          fields: {
-            ROWS: 3,
-            COLS: 3
-          }
+          type: "array_shape_input"
         },
-        // Array shape definition block
-        { 
-          kind: "block", 
-          type: "pyqubo_array_shape",
-          fields: { DIMENSION: "1D" },
-          inputs: {
-            DIMENSIONS: {
-              block: {
-                type: "pyqubo_array_dimension",
-                inputs: {
-                  SIZE: {
-                    shadow: { type: "math_number", fields: { NUM: 9 } }
-                  }
-                }
-              }
-            }
-          }
-        },
-        // Array dimension block
-        { 
-          kind: "block", 
-          type: "pyqubo_array_dimension",
-          inputs: {
-            SIZE: {
-              shadow: { type: "math_number", fields: { NUM: 9 } }
-            }
-          }
-        },
-        // Variable property block
-        { 
-          kind: "block", 
-          type: "pyqubo_var_property",
-          inputs: {
-            VALUE: {
-              shadow: { type: "math_number", fields: { NUM: 0 } }
-            }
-          }
-        },
-        
         // --- Constraints and Objective ---
         {
           kind: "label",
@@ -247,25 +173,12 @@ export const toolboxConfig = {
         // Constraints
         { 
           kind: "block", 
-          type: "pyqubo_constraint",
-          inputs: {
-            LHS: {
-              shadow: { type: "pyqubo_var_reference", fields: { NAME: "x" } }
-            },
-            RHS: {
-              shadow: { type: "math_number", fields: { NUM: 0 } }
-            }
-          }
+          type: "pyqubo_constraint"
         },
         // Objective
         { 
           kind: "block", 
-          type: "pyqubo_objective",
-          inputs: {
-            EXPRESSION: {
-              shadow: { type: "raw_text", fields: { TEXT: "x0 + x1" } }
-            }
-          }
+          type: "pyqubo_objective"
         },
         
         // --- Variable References ---
@@ -275,49 +188,16 @@ export const toolboxConfig = {
         },
         // Variable references
         { kind: "block", type: "pyqubo_var_reference" },
-        // Bridge block for standard variables
-        { kind: "block", type: "variable_to_expression" },
         // Array reference blocks
-        { 
-          kind: "block", 
-          type: "pyqubo_array_reference",
-          inputs: {
-            INDEX: {
-              shadow: { type: "math_number", fields: { NUM: 0 } }
-            }
-          }
-        },
-        { 
-          kind: "block", 
-          type: "pyqubo_2d_array_reference",
-          inputs: {
-            ROW: {
-              shadow: { type: "math_number", fields: { NUM: 0 } }
-            },
-            COL: {
-              shadow: { type: "math_number", fields: { NUM: 0 } }
-            }
-          }
-        },
+        { kind: "block", type: "pyqubo_array_reference" },
         
-        // --- Array Operations ---
+        // --- Array Utilities ---
         {
           kind: "label",
-          text: "Array Operations"
+          text: "Array Utilities"
         },
         // Array sum
-        { 
-          kind: "block", 
-          type: "pyqubo_array_sum",
-          inputs: {
-            FROM: {
-              shadow: { type: "math_number", fields: { NUM: 0 } }
-            },
-            TO: {
-              shadow: { type: "math_number", fields: { NUM: 8 } }
-            }
-          }
-        },
+        { kind: "block", type: "pyqubo_array_sum" },
         
         // --- Expressions ---
         {
@@ -325,18 +205,9 @@ export const toolboxConfig = {
           text: "Expression Building"
         },
         // Expression building
-        { 
-          kind: "block", 
-          type: "pyqubo_expression",
-          inputs: {
-            LEFT: {
-              shadow: { type: "pyqubo_var_reference", fields: { NAME: "x" } }
-            },
-            RIGHT: {
-              shadow: { type: "math_number", fields: { NUM: 1 } }
-            }
-          }
-        }
+        { kind: "block", type: "pyqubo_expression" },
+        // Raw text for expressions
+        { kind: "block", type: "raw_text" }
       ]
     },
     

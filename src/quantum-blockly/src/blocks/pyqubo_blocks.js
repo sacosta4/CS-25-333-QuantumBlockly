@@ -19,7 +19,7 @@ Blockly.Blocks['pyqubo_variable'] = {
         {
           "type": "field_input",
           "name": "NAME",
-          "text": "x"
+          "text": ""
         }
       ],
       "message1": "Properties %1",
@@ -49,7 +49,7 @@ Blockly.Blocks['pyqubo_array_variable'] = {
         {
           "type": "field_input",
           "name": "NAME",
-          "text": "x"
+          "text": ""
         }
       ],
       "message1": "shape: %1 vartype: %2",
@@ -71,7 +71,7 @@ Blockly.Blocks['pyqubo_array_variable'] = {
       "previousStatement": null,
       "nextStatement": null,
       "colour": 230,
-      "tooltip": "Create an array variable for PyQUBO with 1D or 2D shape"
+      "tooltip": "Create an array variable for PyQUBO with sequential numbering"
     });
   }
 };
@@ -86,98 +86,19 @@ Blockly.Blocks['array_shape_input'] = {
         {
           "type": "field_number",
           "name": "ROWS",
-          "value": 3,
+          "value": 0,
           "min": 1
         },
         {
           "type": "field_number",
           "name": "COLS",
-          "value": 3,
+          "value": 0,
           "min": 1
         }
       ],
       "output": "Array",
       "colour": 230,
       "tooltip": "Define a 2D array shape with rows and columns"
-    });
-  }
-};
-
-// Array Shape Block
-Blockly.Blocks['pyqubo_array_shape'] = {
-  init: function() {
-    this.jsonInit({
-      "type": "pyqubo_array_shape",
-      "message0": "%1 shape: %2",
-      "args0": [
-        {
-          "type": "field_dropdown",
-          "name": "DIMENSION",
-          "options": [
-            ["1D", "1D"],
-            ["2D", "2D"]
-          ]
-        },
-        {
-          "type": "input_statement",
-          "name": "DIMENSIONS",
-          "check": "ArrayDimension"
-        }
-      ],
-      "output": "Array",
-      "colour": 230,
-      "tooltip": "Define the shape of an array"
-    });
-  }
-};
-
-// Dimension block for array shapes
-Blockly.Blocks['pyqubo_array_dimension'] = {
-  init: function() {
-    this.jsonInit({
-      "type": "pyqubo_array_dimension",
-      "message0": "size: %1",
-      "args0": [
-        {
-          "type": "input_value",
-          "name": "SIZE",
-          "check": "Number"
-        }
-      ],
-      "previousStatement": "ArrayDimension",
-      "nextStatement": "ArrayDimension",
-      "colour": 230,
-      "tooltip": "Define a dimension size for an array"
-    });
-  }
-};
-
-// Variable Property Block - for Integer bounds and Array size
-Blockly.Blocks['pyqubo_var_property'] = {
-  init: function() {
-    this.jsonInit({
-      "type": "pyqubo_var_property",
-      "message0": "%1 %2",
-      "args0": [
-        {
-          "type": "field_dropdown",
-          "name": "PROPERTY",
-          "options": [
-            ["lower bound", "lower_bound"],
-            ["upper bound", "upper_bound"]
-          ]
-        },
-        {
-          "type": "input_value",
-          "name": "VALUE",
-          "check": "Number"
-        }
-      ],
-      "previousStatement": "VariableProperty",
-      "nextStatement": "VariableProperty",
-      "colour": 230,
-      "tooltip": "Set a property for a variable",
-      "helpUrl": ""
     });
   }
 };
@@ -298,7 +219,7 @@ Blockly.Blocks['pyqubo_var_reference'] = {
         {
           "type": "field_input",
           "name": "NAME",
-          "text": "x"
+          "text": ""
         }
       ],
       "output": ["String", "Number"],
@@ -319,7 +240,7 @@ Blockly.Blocks['pyqubo_array_reference'] = {
         {
           "type": "field_input",
           "name": "NAME",
-          "text": "x"
+          "text": ""
         },
         {
           "type": "input_value",
@@ -335,58 +256,6 @@ Blockly.Blocks['pyqubo_array_reference'] = {
   }
 };
 
-// 2D Array Reference Block
-Blockly.Blocks['pyqubo_2d_array_reference'] = {
-  init: function() {
-    this.jsonInit({
-      "type": "pyqubo_2d_array_reference",
-      "message0": "array %1 [ %2 ] [ %3 ]",
-      "args0": [
-        {
-          "type": "field_input",
-          "name": "NAME",
-          "text": "x"
-        },
-        {
-          "type": "input_value",
-          "name": "ROW",
-          "check": "Number"
-        },
-        {
-          "type": "input_value",
-          "name": "COL",
-          "check": "Number"
-        }
-      ],
-      "output": ["String", "Number"],
-      "colour": 230,
-      "tooltip": "Reference a 2D array element in an expression",
-      "helpUrl": ""
-    });
-  }
-};
-
-// Bridge block for standard Blockly variables
-Blockly.Blocks['variable_to_expression'] = {
-  init: function() {
-    this.jsonInit({
-      "type": "variable_to_expression",
-      "message0": "use variable %1 in expression",
-      "args0": [
-        {
-          "type": "field_variable",
-          "name": "VAR",
-          "variable": "item"
-        }
-      ],
-      "output": ["String", "Number"],
-      "colour": 230,
-      "tooltip": "Use a standard variable in quantum expressions",
-      "helpUrl": ""
-    });
-  }
-};
-
 // Sum of Array Elements Block
 Blockly.Blocks['pyqubo_array_sum'] = {
   init: function() {
@@ -397,7 +266,7 @@ Blockly.Blocks['pyqubo_array_sum'] = {
         {
           "type": "field_input",
           "name": "NAME",
-          "text": "x"
+          "text": ""
         },
         {
           "type": "input_value",
@@ -475,7 +344,7 @@ Blockly.Blocks['pyqubo_function'] = {
         {
           "type": "field_input",
           "name": "NAME",
-          "text": "createQuboForSingleMove"
+          "text": ""
         },
         {
           "type": "input_value",
@@ -511,24 +380,41 @@ Blockly.Blocks['pyqubo_result_display'] = {
   }
 };
 
+// Raw text block for expressions without quotes
+Blockly.Blocks['raw_text'] = {
+  init: function() {
+    this.jsonInit({
+      "type": "raw_text",
+      "message0": "raw text %1",
+      "args0": [
+        {
+          "type": "field_input",
+          "name": "TEXT",
+          "text": "" 
+        }
+      ],
+      "output": ["String", "Number"],
+      "colour": 160,
+      "tooltip": "Text without quotes for expressions",
+      "helpUrl": ""
+    });
+  }
+};
+
 export default {
   blocks: [
     'pyqubo_variable',
     'pyqubo_array_variable',
-    'array_shape_input',    // Added new block
-    'pyqubo_array_shape',
-    'pyqubo_array_dimension',
-    'pyqubo_var_property',
+    'array_shape_input',
     'pyqubo_constraint',
     'pyqubo_objective',
     'pyqubo_expression',
     'pyqubo_var_reference',
     'pyqubo_array_reference',
-    'pyqubo_2d_array_reference',
     'pyqubo_array_sum',
     'pyqubo_model',
     'pyqubo_function',
-    'variable_to_expression',
-    'pyqubo_result_display'
+    'pyqubo_result_display',
+    'raw_text'
   ]
 };
