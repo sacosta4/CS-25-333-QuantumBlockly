@@ -152,7 +152,7 @@ def calculate():
         qubo_str_keys = {str(k): v for k, v in qubo.items()}
 
         sampler = SimulatedAnnealingSampler()
-        response = sampler.sample_qubo(qubo, num_reads=10)
+        response = sampler.sample_qubo(qubo, num_reads=1000)
         best_sample = list(response.samples())[0]
 
         solution = None
