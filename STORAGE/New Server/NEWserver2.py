@@ -94,11 +94,11 @@ def parse_constraints(constraint_data, expressions):
             if comparison == "=":
                 constraints.append(10 * (lhs - rhs) ** 2)
             elif comparison == "<=" or comparison == "≤":
-                constraints.append((lhs - rhs) ** 2)
+                constraints.append(10 * (lhs - rhs) ** 2)
             elif comparison == ">=" or comparison == "≥":
-                constraints.append((rhs - lhs) ** 2)
+                constraints.append(10 * (rhs - lhs) ** 2)
             elif comparison == "!=":
-                constraints.append((lhs - rhs) ** 2 * 100)
+                constraints.append(10 * (lhs - rhs) ** 2 * 100)
         except Exception as e:
             return jsonify({"error": f"Invalid constraint expression: {lhs_expr}, {str(e)}"}), 400
 
