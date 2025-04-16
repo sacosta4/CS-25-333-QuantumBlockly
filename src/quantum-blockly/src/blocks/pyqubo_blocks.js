@@ -12,7 +12,7 @@ Blockly.Blocks['pyqubo_variable'] = {
           "name": "TYPE",
           "options": [
             ["Binary", "Binary"],
-            ["Spin", "Spin"],
+            ["Spin", "Spin"], 
             ["Integer", "Integer"]
           ]
         },
@@ -20,14 +20,6 @@ Blockly.Blocks['pyqubo_variable'] = {
           "type": "field_input",
           "name": "NAME",
           "text": ""
-        }
-      ],
-      "message1": "Properties %1",
-      "args1": [
-        {
-          "type": "input_statement",
-          "name": "PROPERTIES",
-          "check": "VariableProperty"
         }
       ],
       "previousStatement": null,
@@ -55,9 +47,10 @@ Blockly.Blocks['pyqubo_array_variable'] = {
       "message1": "shape: %1 vartype: %2",
       "args1": [
         {
-          "type": "input_value",
+          "type": "field_number",  // Changed from input_value to field_number
           "name": "SHAPE",
-          "check": ["Array", "Number", "String"]
+          "value": 10,             // Default value
+          "min": 1                 // Minimum value
         },
         {
           "type": "field_dropdown",
@@ -111,9 +104,9 @@ Blockly.Blocks['pyqubo_constraint'] = {
       "message0": "Add constraint: %1 %2 %3",
       "args0": [
         {
-          "type": "input_value",
+          "type": "field_input",  // Changed from input_value
           "name": "LHS",
-          "check": ["String", "Number", "Boolean"]
+          "text": ""              // Default empty text
         },
         {
           "type": "field_dropdown",
@@ -126,9 +119,9 @@ Blockly.Blocks['pyqubo_constraint'] = {
           ]
         },
         {
-          "type": "input_value",
+          "type": "field_input",  // Changed from input_value
           "name": "RHS",
-          "check": ["String", "Number", "Boolean"]
+          "text": "0"             // Default value 0
         }
       ],
       "inputsInline": true,
@@ -157,9 +150,9 @@ Blockly.Blocks['pyqubo_objective'] = {
           ]
         },
         {
-          "type": "input_value",
+          "type": "field_input",  // Changed from input_value
           "name": "EXPRESSION",
-          "check": ["String", "Number", "Boolean"]
+          "text": ""              // Default empty text
         }
       ],
       "inputsInline": true,
