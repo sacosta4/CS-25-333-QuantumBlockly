@@ -1,0 +1,22 @@
+{
+  "variables": {
+    "d0": {
+      "type": "Spin"
+    },
+    "d4": {
+      "type": "Spin"
+    },
+    "d8": {
+      "type": "Spin"
+    }
+  },
+  "Constraints": [
+    {
+      "lhs": "d0 + d4 + d8",
+      "comparison": "<=",
+      "rhs": 2
+    }
+  ],
+  "Objective": "d0 + d4 + d8",
+  "Return": "d4 * 3 + d0 + d8"
+}

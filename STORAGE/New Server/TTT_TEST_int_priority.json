@@ -1,0 +1,18 @@
+{
+  "variables": {
+    "score": {
+      "type": "Unary",
+      "lower": 0,
+      "upper": 3
+    }
+  },
+  "Constraints": [
+    {
+      "lhs": "score",
+      "comparison": "<=",
+      "rhs": 2
+    }
+  ],
+  "Objective": "-score * 2",
+  "Return": "score + 1"
+}

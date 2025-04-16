@@ -1,0 +1,17 @@
+{
+  "variables": {
+    "cells": {
+      "type": "Array",
+      "shape": 9
+    }
+  },
+  "Constraints": [
+    {
+      "lhs": "cells_1 + cells_3 + cells_5 + cells_7",
+      "comparison": "<=",
+      "rhs": 1
+    }
+  ],
+  "Objective": "-cells_1 * 2 - cells_7 * 2",
+  "Return": "cells_1 + cells_3 + cells_5 + cells_7"
+}

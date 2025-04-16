@@ -1,0 +1,22 @@
+{
+  "variables": {
+    "s0": {
+      "type": "Spin"
+    },
+    "s1": {
+      "type": "Spin"
+    },
+    "s2": {
+      "type": "Spin"
+    }
+  },
+  "Constraints": [
+    {
+      "lhs": "s0 + s1 + s2",
+      "comparison": ">=",
+      "rhs": 1
+    }
+  ],
+  "Objective": "-s0 - 2 * s1 - s2",
+  "Return": "s0 + 2 * s1 + s2"
+}

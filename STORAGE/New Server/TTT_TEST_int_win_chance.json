@@ -1,0 +1,18 @@
+{
+  "variables": {
+    "chance": {
+      "type": "Unary",
+      "lower": 1,
+      "upper": 4
+    }
+  },
+  "Constraints": [
+    {
+      "lhs": "chance",
+      "comparison": ">=",
+      "rhs": 2
+    }
+  ],
+  "Objective": "-chance",
+  "Return": "chance * 3"
+}

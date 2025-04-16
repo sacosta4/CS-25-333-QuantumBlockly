@@ -1,0 +1,20 @@
+{
+  "variables": {
+    "grid": {
+      "type": "Array",
+      "shape": [
+        3,
+        3
+      ]
+    }
+  },
+  "Constraints": [
+    {
+      "lhs": "grid_0_1 + grid_1_0 + grid_1_2 + grid_2_1",
+      "comparison": "=",
+      "rhs": 1
+    }
+  ],
+  "Objective": "-grid_1_2 * 3",
+  "Return": "grid_0_1 + grid_2_1 + 2 * grid_1_2"
+}

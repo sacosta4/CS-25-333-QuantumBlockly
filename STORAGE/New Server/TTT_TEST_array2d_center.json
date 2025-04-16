@@ -1,0 +1,20 @@
+{
+  "variables": {
+    "board": {
+      "type": "Array",
+      "shape": [
+        3,
+        3
+      ]
+    }
+  },
+  "Constraints": [
+    {
+      "lhs": "board_1_1",
+      "comparison": "=",
+      "rhs": 1
+    }
+  ],
+  "Objective": "-board_1_1 * 5",
+  "Return": "board_1_1"
+}

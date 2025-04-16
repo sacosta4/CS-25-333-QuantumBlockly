@@ -126,6 +126,19 @@ def calculate():
     def evaluate_return_expression(expr: str, sample: dict):
         try:
             values = {k: int(v) for k, v in sample.items()}
+
+            # Handle unary variable names (e.g., score, chance)
+            unary_groups = {}
+            for key in values:
+                if "[" in key and key.endswith("]"):
+                    name = key.split("[")[0]
+                    unary_groups.setdefault(name, []).append((int(key[key.index("[")+1:-1]), key))
+
+            # Sort and sum bits into scalar aliases
+            for name, bits in unary_groups.items():
+                bits.sort()  # Sort by index
+                values[name] = sum(values[key] for _, key in bits)
+
             return eval(expr, {}, values)
         except Exception as e:
             return f"Error evaluating return expression: {str(e)}"
