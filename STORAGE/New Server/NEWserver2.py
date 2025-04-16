@@ -134,12 +134,21 @@ def calculate():
                     name = key.split("[")[0]
                     unary_groups.setdefault(name, []).append((int(key[key.index("[")+1:-1]), key))
 
-            # Sort and sum bits into scalar aliases
+            # Determine proper unary value by counting leading 1s
             for name, bits in unary_groups.items():
                 bits.sort()  # Sort by index
-                values[name] = sum(values[key] for _, key in bits)
+                val = 0
+                for _, key in bits:
+                    if values[key] == 1:
+                        val += 1
+                    else:
+                        break
+                values[name] = val  # Add reconstructed unary value
 
-            return eval(expr, {}, values)
+            # Return both the evaluated result and the complete value map
+            result = eval(expr, {}, values)
+            return result, values
+
         except Exception as e:
             return f"Error evaluating return expression: {str(e)}"
 
@@ -186,18 +195,19 @@ def calculate():
                 solution = key
                 break
 
-        
+        # Evaluate and extract substituted variables
         result = evaluate_return_expression(return_expr, best_sample)
         if isinstance(result, str):  # Error string
             return jsonify({"error": result}), 400
-        evaluated_return = result
+        evaluated_return, substituted_values = result
 
         return jsonify({
             'offset': offset,
             'solution': solution,
             'sample': {k: int(v) for k, v in best_sample.items()},
             'return': evaluated_return,
-            'return_expr': return_expr
+            'return_expr': return_expr,
+            'substituted_values': substituted_values
         }), 200
 
     except Exception as e:
