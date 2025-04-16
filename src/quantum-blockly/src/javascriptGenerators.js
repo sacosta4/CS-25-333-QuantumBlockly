@@ -159,48 +159,17 @@ javascriptGenerator.forBlock['update_quad_dict'] = function (block) {
 javascriptGenerator.forBlock['pyqubo_array_variable'] = function(block) {
   const varName = block.getFieldValue('NAME');
   const vartype = block.getFieldValue('VARTYPE');
-  const shapeInput = javascriptGenerator.valueToCode(block, 'SHAPE', javascriptGenerator.ORDER_ATOMIC);
+  const size = parseInt(block.getFieldValue('SHAPE')); // Get size directly as a number
   
   let code = '';
-  let totalCount = 0;
   
-  // Check if the input is a 2D array format (e.g., [3, 3])
-  if (shapeInput && shapeInput.startsWith('[') && shapeInput.includes(',')) {
-    try {
-      // Parse the dimensions from the input
-      const dimensions = JSON.parse(shapeInput.replace(/\s+/g, ''));
-      if (Array.isArray(dimensions) && dimensions.length === 2) {
-        const rows = dimensions[0];
-        const cols = dimensions[1];
-        
-        // Create variables with sequential naming (x0, x1, x2, etc.)
-        for (let i = 0; i < rows; i++) {
-          for (let j = 0; j < cols; j++) {
-            code += `variables["${varName}${totalCount}"] = { "type": "${vartype}" };\n`;
-            totalCount++;
-          }
-        }
-        return code;
-      }
-    } catch (e) {
-      console.error("Failed to parse array shape:", e);
-    }
-  }
-  
-  // Handle 1D array or fallback case
-  const size = parseInt(shapeInput);
-  if (!isNaN(size) && size > 0) {
-    for (let i = 0; i < size; i++) {
-      code += `variables["${varName}${i}"] = { "type": "${vartype}" };\n`;
-    }
-  } else {
-    // Just create a single variable if no valid shape is provided
-    code += `variables["${varName}0"] = { "type": "${vartype}" };\n`;
+  // Create variables with sequential naming
+  for (let i = 0; i < size; i++) {
+    code += `variables["${varName}${i}"] = { "type": "${vartype}" };\n`;
   }
   
   return code;
 };
-
 
 // New block for PyQUBO variable definition
 javascriptGenerator.forBlock['pyqubo_variable'] = function (block, generator) {
@@ -216,13 +185,10 @@ javascriptGenerator.forBlock['pyqubo_variable'] = function (block, generator) {
 };
 
 // New block for PyQUBO constraint
-javascriptGenerator.forBlock['pyqubo_constraint'] = function(block, generator) {
-  var lhs = generator.valueToCode(block, 'LHS', javascriptGenerator.ORDER_ATOMIC);
+javascriptGenerator.forBlock['pyqubo_constraint'] = function(block) {
+  var lhs = block.getFieldValue('LHS');
   var operator = block.getFieldValue('OPERATOR');
-  var rhs = generator.valueToCode(block, 'RHS', javascriptGenerator.ORDER_ATOMIC);
-  
-  // Remove any quotes from the LHS to ensure it's properly formatted
-  lhs = lhs.replace(/^["'](.*)["']$/, '$1');
+  var rhs = block.getFieldValue('RHS');
   
   // Format the constraint correctly
   var code = `constraints.push({
@@ -237,21 +203,15 @@ javascriptGenerator.forBlock['pyqubo_constraint'] = function(block, generator) {
 // Updated PyQUBO Objective Block Generator to work with raw text
 javascriptGenerator.forBlock['pyqubo_objective'] = function(block) {
   var goal = block.getFieldValue('GOAL');
-  // Get expression without quotes
-  var expression = javascriptGenerator.valueToCode(block, 'EXPRESSION', javascriptGenerator.ORDER_ATOMIC);
-  
-  // Remove any quotes around the expression
-  expression = expression.replace(/^["'](.*)["']$/, '$1');
+  var expression = block.getFieldValue('EXPRESSION');
   
   // Fix missing multiplication operators between numbers and variables
-  // This regex will find numbers directly followed by variable names and insert a '*' between them
   expression = expression.replace(/(\d+)([a-zA-Z_]+)/g, '$1*$2');
   
   // For maximize, we negate the objective since PyQUBO minimizes by default
   const prefix = goal === 'maximize' ? '-(' : '';
   const suffix = goal === 'maximize' ? ')' : '';
   
-  // Do not add extra quotes around the expression
   var code = `objective = "${prefix}${expression}${suffix}";\n`;
   
   return code;
