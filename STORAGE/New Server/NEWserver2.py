@@ -121,11 +121,24 @@ def parse_objective(objective_expr, expressions):
         return jsonify({"error": f"Invalid objective expression: {objective_expr}, {str(e)}"}), 400
 
 @app.route('/quantum', methods=['POST'])
+@app.route('/quantum', methods=['POST'])
 def calculate():
+    def evaluate_return_expression(expr: str, sample: dict):
+        try:
+            values = {k: int(v) for k, v in sample.items()}
+            return eval(expr, {}, values)
+        except Exception as e:
+            return f"Error evaluating return expression: {str(e)}"
+
     try:
         data = request.json
         if not data:
             return jsonify({"error": "No JSON data received"}), 400
+
+        # Ensure Return expression is provided
+        return_expr = data.get("Return")
+        if not return_expr:
+            return jsonify({"error": "Missing required 'Return' expression in request."}), 400
 
         expressions, variables = parse_variables(data.get("variables", {}))
         if isinstance(expressions, tuple):
@@ -141,11 +154,10 @@ def calculate():
 
         qubo_model = sum(constraints) + objective
 
-         # Add unary variable objects to ensure structure is enforced
+        # Add unary variable objects to ensure structure is enforced
         for v in variables.values():
             if isinstance(v, UnaryEncInteger):  
-                qubo_model += v 
-
+                qubo_model += v
 
         compiled_qubo = qubo_model.compile()
         qubo, offset = compiled_qubo.to_qubo()
@@ -160,17 +172,24 @@ def calculate():
             if value == 1:
                 solution = key
                 break
-            
+
+        
+        result = evaluate_return_expression(return_expr, best_sample)
+        if isinstance(result, str):  # Error string
+            return jsonify({"error": result}), 400
+        evaluated_return = result
 
         return jsonify({
             'qubo': qubo_str_keys,
             'offset': offset,
             'solution': solution,
-            'sample': {k: int(v) for k, v in best_sample.items()}
+            'sample': {k: int(v) for k, v in best_sample.items()},
+            'return': evaluated_return
         }), 200
 
     except Exception as e:
         return jsonify({"error": f"Unexpected error: {str(e)}"}), 500
+
 
 if __name__ == '__main__':
     app.run(debug=True, port=8000)
