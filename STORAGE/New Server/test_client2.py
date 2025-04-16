@@ -1,14 +1,9 @@
-#Make folder for test case input files w/ expected outputs
-#Spins, Arrays, 2D Arrays, Binaries
-#Different constraints
-#3 of each
-
 import requests
 import json
 import os
 
 SERVER_URL = "http://127.0.0.1:8000/quantum"
-TEST_CASES_DIR = os.path.dirname(os.path.abspath(__file__))  # Get current directory
+TEST_CASES_DIR = os.path.dirname(os.path.abspath(__file__))
 
 def load_test_case(filename):
     """Loads a test case JSON file from the same directory."""
@@ -37,17 +32,31 @@ def send_request(test_case_file):
         print("Offset:", data.get("offset"))
         print("Solution:", data.get("solution"))
 
+        return_expr = data.get("return_expr")
+        evaluated_return = data.get("return")
+
+        print("Return Expression:", return_expr)
+        if return_expr:
+            sample = data.get("sample", {})
+            substituted_expr = return_expr
+            for var, val in sample.items():
+                substituted_expr = substituted_expr.replace(var, str(val))
+            print("Substituted Expression:", substituted_expr)
+
+        print("Return Value:", evaluated_return)
+
         print("\nSolved Sample:")
         sample = data.get("sample", {})
         for var, val in sample.items():
             print(f"  {var} = {val}")
-
-        print("\nQUBO:")
-        qubo = data.get("qubo", {})
-        for k, v in qubo.items():
-            print(f"  {k} : {v}")
     else:
-        print("Error:", response.status_code, response.text)
+        print("\n=== Server Error ===")
+        print("Status Code:", response.status_code)
+        try:
+            print("Details:", response.json())
+        except Exception:
+            print("Raw Response:", response.text)
+
 
 if __name__ == "__main__":
     test_file = input("Enter the test case filename: ")

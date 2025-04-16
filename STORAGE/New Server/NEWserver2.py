@@ -180,11 +180,11 @@ def calculate():
         evaluated_return = result
 
         return jsonify({
-            'qubo': qubo_str_keys,
             'offset': offset,
             'solution': solution,
             'sample': {k: int(v) for k, v in best_sample.items()},
-            'return': evaluated_return
+            'return': evaluated_return,
+            'return_expr': return_expr
         }), 200
 
     except Exception as e:
