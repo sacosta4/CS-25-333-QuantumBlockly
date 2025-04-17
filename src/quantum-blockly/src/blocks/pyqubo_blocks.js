@@ -34,134 +34,81 @@ Blockly.Blocks['pyqubo_variable'] = {
 // Modified Array Variable Block to properly handle complex shapes
 Blockly.Blocks['pyqubo_array_variable'] = {
   init: function() {
-    this.jsonInit({
-      "type": "pyqubo_array_variable",
-      "message0": "Create Array %1",
-      "args0": [
-        {
-          "type": "field_input",
-          "name": "NAME",
-          "text": ""
-        }
-      ],
-      "message1": "shape: %1 vartype: %2",
-      "args1": [
-        {
-          "type": "field_number",  // Changed from input_value to field_number
-          "name": "SHAPE",
-          "value": 10,             // Default value
-          "min": 1                 // Minimum value
-        },
-        {
-          "type": "field_dropdown",
-          "name": "VARTYPE",
-          "options": [
+    this.appendDummyInput()
+        .appendField("Create Array")
+        .appendField(new Blockly.FieldTextInput(""), "NAME");
+    this.appendDummyInput()
+        .appendField("shape:");
+    this.appendValueInput("SHAPE")
+        .setCheck(["Array", "Number"]);  // Accept both array and number inputs
+    this.appendDummyInput()
+        .appendField("vartype:")
+        .appendField(new Blockly.FieldDropdown([
             ["Binary", "Binary"],
             ["Spin", "Spin"]
-          ]
-        }
-      ],
-      "previousStatement": null,
-      "nextStatement": null,
-      "colour": 230,
-      "tooltip": "Create an array variable for PyQUBO with sequential numbering"
-    });
+        ]), "VARTYPE");
+    this.setInputsInline(true);  // This makes the block more compact
+    this.setPreviousStatement(true, null);
+    this.setNextStatement(true, null);
+    this.setColour(230);
+    this.setTooltip("Create an array variable for PyQUBO with sequential numbering");
   }
 };
 
 // New Array Shape Input Block for 2D arrays
 Blockly.Blocks['array_shape_input'] = {
   init: function() {
-    this.jsonInit({
-      "type": "array_shape_input",
-      "message0": "[%1, %2]",
-      "args0": [
-        {
-          "type": "field_number",
-          "name": "ROWS",
-          "value": 0,
-          "min": 1
-        },
-        {
-          "type": "field_number",
-          "name": "COLS",
-          "value": 0,
-          "min": 1
-        }
-      ],
-      "output": "Array",
-      "colour": 230,
-      "tooltip": "Define a 2D array shape with rows and columns"
-    });
+    this.appendDummyInput()
+        .appendField("[")
+        .appendField(new Blockly.FieldNumber(3, 1, 100), "ROWS")
+        .appendField(",")
+        .appendField(new Blockly.FieldNumber(3, 1, 100), "COLS")
+        .appendField("]");
+    this.setOutput(true, "Array");
+    this.setColour(230);
+    this.setTooltip("Define a 2D array shape with rows and columns");
   }
 };
 
 // PyQUBO Constraint Block
 Blockly.Blocks['pyqubo_constraint'] = {
   init: function() {
-    this.jsonInit({
-      "type": "pyqubo_constraint",
-      "message0": "Add constraint: %1 %2 %3",
-      "args0": [
-        {
-          "type": "field_input",  // Changed from input_value
-          "name": "LHS",
-          "text": ""              // Default empty text
-        },
-        {
-          "type": "field_dropdown",
-          "name": "OPERATOR",
-          "options": [
+    this.appendValueInput("LHS")
+        .setCheck(["String", "Number", "Boolean"])
+        .appendField("Add constraint:");
+    this.appendDummyInput()
+        .appendField(new Blockly.FieldDropdown([
             ["=", "="],
             ["<=", "<="],
             [">=", ">="],
             ["!=", "!="]
-          ]
-        },
-        {
-          "type": "field_input",  // Changed from input_value
-          "name": "RHS",
-          "text": "0"             // Default value 0
-        }
-      ],
-      "inputsInline": true,
-      "previousStatement": null,
-      "nextStatement": null,
-      "colour": 230,
-      "tooltip": "Add a constraint to the QUBO model",
-      "helpUrl": ""
-    });
+        ]), "OPERATOR");
+    this.appendValueInput("RHS")
+        .setCheck(["String", "Number", "Boolean"]);
+    this.setInputsInline(true);
+    this.setPreviousStatement(true, null);
+    this.setNextStatement(true, null);
+    this.setColour(230);
+    this.setTooltip("Add a constraint to the QUBO model");
   }
 };
 
 // PyQUBO Objective Block
 Blockly.Blocks['pyqubo_objective'] = {
   init: function() {
-    this.jsonInit({
-      "type": "pyqubo_objective",
-      "message0": "Set objective to %1 %2",
-      "args0": [
-        {
-          "type": "field_dropdown",
-          "name": "GOAL",
-          "options": [
+    this.appendDummyInput()
+        .appendField("Set objective to")
+        .appendField(new Blockly.FieldDropdown([
             ["maximize", "maximize"],
             ["minimize", "minimize"]
-          ]
-        },
-        {
-          "type": "field_input",  // Changed from input_value
-          "name": "EXPRESSION",
-          "text": ""              // Default empty text
-        }
-      ],
-      "inputsInline": true,
-      "previousStatement": null,
-      "nextStatement": null,
-      "colour": 230,
-      "tooltip": "Define the objective function to optimize",
-      "helpUrl": ""
-    });
+        ]), "GOAL");
+    this.appendValueInput("EXPRESSION")
+        .setCheck(["String", "Number", "Boolean"]);
+    this.setInputsInline(true);
+    this.setPreviousStatement(true, null);
+    this.setNextStatement(true, null);
+    this.setColour(230);
+    this.setTooltip("Define the objective function to optimize");
   }
 };
 
