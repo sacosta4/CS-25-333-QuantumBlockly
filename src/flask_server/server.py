@@ -121,7 +121,6 @@ def parse_objective(objective_expr, expressions):
         return jsonify({"error": f"Invalid objective expression: {objective_expr}, {str(e)}"}), 400
 
 @app.route('/quantum', methods=['POST'])
-@app.route('/quantum', methods=['POST'])
 def calculate():
     def evaluate_return_expression(expr: str, sample: dict):
         try:
