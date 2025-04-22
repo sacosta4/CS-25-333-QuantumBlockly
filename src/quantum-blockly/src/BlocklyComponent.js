@@ -20,137 +20,143 @@ function BlocklyComponent({ mainCodeHandlingFunction, log}) {
   const [code, setCode] = useState(''); // The component has its own code state to be retrieved from the blockly code handling function
 
   // Helper function to convert old QUBO format to PyQUBO format
-  const convertToNewFormat = (oldFormat) => {
-    const newFormat = {
-      variables: {},
-      Constraints: [],
-      Objective: ""
-    };
+const convertToNewFormat = (oldFormat) => {
+  const newFormat = {
+    variables: {},
+    Constraints: [],
+    Objective: "",
+    Return: ""  // Add this field
+  };
+  
+  // Convert linear terms to variables and objective
+  let objectiveTerms = [];
+  
+  // Add variables
+  Object.keys(oldFormat.linear || {}).forEach(key => {
+    const varName = `x${key}`;
+    newFormat.variables[varName] = { "type": "Binary" };
     
-    // Convert linear terms to variables and objective
-    let objectiveTerms = [];
+    // Add to objective if weight is non-zero
+    const weight = oldFormat.linear[key];
+    if (weight !== 0) {
+      objectiveTerms.push(`${weight} * ${varName}`);
+    }
+  });
+  
+  // Add quadratic terms to objective
+  Object.keys(oldFormat.quadratic || {}).forEach(keyPair => {
+    const [i, j] = keyPair.split(',');
+    const varName1 = `x${i}`;
+    const varName2 = `x${j}`;
     
-    // Add variables
-    Object.keys(oldFormat.linear || {}).forEach(key => {
-      const varName = `x${key}`;
-      newFormat.variables[varName] = { "type": "Binary" };
-      
-      // Add to objective if weight is non-zero
-      const weight = oldFormat.linear[key];
-      if (weight !== 0) {
-        objectiveTerms.push(`${weight} * ${varName}`);
-      }
-    });
-    
-    // Add quadratic terms to objective
-    Object.keys(oldFormat.quadratic || {}).forEach(keyPair => {
-      const [i, j] = keyPair.split(',');
-      const varName1 = `x${i}`;
-      const varName2 = `x${j}`;
-      
-      // Ensure variables exist
-      if (!newFormat.variables[varName1]) {
-        newFormat.variables[varName1] = { "type": "Binary" };
-      }
-      if (!newFormat.variables[varName2]) {
-        newFormat.variables[varName2] = { "type": "Binary" };
-      }
-      
-      // Add to objective if weight is non-zero
-      const weight = oldFormat.quadratic[keyPair];
-      if (weight !== 0) {
-        objectiveTerms.push(`${weight} * ${varName1} * ${varName2}`);
-      }
-    });
-    
-    // Combine objective terms
-    newFormat.Objective = objectiveTerms.join(' + ');
-    
-    // Add a simple constraint to ensure exactly one variable is selected
-    if (Object.keys(newFormat.variables).length > 0) {
-      const allVars = Object.keys(newFormat.variables).join(' + ');
-      newFormat.Constraints.push({
-        "lhs": allVars,
-        "comparison": "=",
-        "rhs": 1
-      });
+    // Ensure variables exist
+    if (!newFormat.variables[varName1]) {
+      newFormat.variables[varName1] = { "type": "Binary" };
+    }
+    if (!newFormat.variables[varName2]) {
+      newFormat.variables[varName2] = { "type": "Binary" };
     }
     
-    return newFormat;
-  };
+    // Add to objective if weight is non-zero
+    const weight = oldFormat.quadratic[keyPair];
+    if (weight !== 0) {
+      objectiveTerms.push(`${weight} * ${varName1} * ${varName2}`);
+    }
+  });
+  
+  // Combine objective terms
+  newFormat.Objective = objectiveTerms.join(' + ');
+  
+  // Add a simple constraint to ensure exactly one variable is selected
+  if (Object.keys(newFormat.variables).length > 0) {
+    const allVars = Object.keys(newFormat.variables).join(' + ');
+    newFormat.Constraints.push({
+      "lhs": allVars,
+      "comparison": "=",
+      "rhs": 1
+    });
+  }
+  
+  // Add a Return expression that returns the index of the selected variable
+  const returnTerms = [];
+  Object.keys(newFormat.variables).forEach(varName => {
+    // Extract the index number from the variable name (x0, x1, etc.)
+    const index = varName.replace('x', '');
+    returnTerms.push(`${index} * ${varName}`);
+  });
+  newFormat.Return = returnTerms.join(' + ');
+  
+  return newFormat;
+};
 
-  const extractQUBOData = (workspace) => {
-    try {
-      // Get the JavaScript code generated from the workspace
-      const code = javascriptGenerator.workspaceToCode(workspace);
-      
-      // Log generated code for debugging
-      console.log("Generated Blockly Code:", code);
-      
-      // Prepare sandbox for execution
-      const createFunction = new Function(`
-        try {
-          ${code}
-          // Return the function if it exists, otherwise null
-          return typeof createQuboForSingleMove === 'function' ? createQuboForSingleMove : null;
-        } catch (error) {
-          console.error("Error in QUBO function generation:", error);
-          return null;
-        }
-      `);
-      
-      // Execute in sandbox
-      const createQuboForSingleMove = createFunction();
-      
-      // Create a dummy board for testing
-      const dummyBoard = Array(9).fill('');
-      
-      // Check if the function exists and call it
-      if (typeof createQuboForSingleMove === 'function') {
-        try {
-          const quboData = createQuboForSingleMove(dummyBoard);
-          
-          // Validate QUBO data
-          if (quboData && (quboData.variables || quboData.linear)) {
-            // If it's the old format, convert to new format
-            if (quboData.linear && quboData.quadratic) {
-              return convertToNewFormat(quboData);
-            }
-            
-            // Return the new PyQUBO format directly with validation
-            return {
-              variables: quboData.variables || {},
-              Constraints: quboData.Constraints || [],
-              Objective: quboData.Objective || "0"
-            };
-          }
-        } catch (executionError) {
-          console.error("Error executing QUBO function:", executionError);
-        }
-      }
-    } catch (error) {
-      console.error("Error extracting QUBO data:", error);
+const extractQUBOData = (workspace) => {
+  try {
+    // Get the JavaScript code generated from the workspace
+    const code = javascriptGenerator.workspaceToCode(workspace);
+    
+    // Log generated code for debugging
+    console.log("Generated Blockly Code:", code);
+    
+    // If the code is empty, return null
+    if (!code || code.trim() === '') {
+      console.error("No code in workspace");
+      return null;
     }
     
-    // Return a default PyQUBO structure if extraction fails
-    return {
-      variables: {
-        "x0": { "type": "Binary" },
-        "x1": { "type": "Binary" },
-        "x2": { "type": "Binary" },
-        "x3": { "type": "Binary" },
-        "x4": { "type": "Binary" },
-        "x5": { "type": "Binary" },
-        "x6": { "type": "Binary" },
-        "x7": { "type": "Binary" },
-        "x8": { "type": "Binary" }
-      },
-      Constraints: [
-        {"lhs": "x0 + x1 + x2 + x3 + x4 + x5 + x6 + x7 + x8", "comparison": "=", "rhs": 1}
-      ],
-      Objective: "(-3 * x4) + (-2 * x0) + (-2 * x2) + (-2 * x6) + (-2 * x8) + (-1 * x1) + (-1 * x3) + (-1 * x5) + (-1 * x7)"
-    };
-  };
+    // Prepare sandbox for execution
+    const createFunction = new Function(`
+      try {
+        ${code}
+        // Return the function if it exists, otherwise null
+        return typeof createQuboForSingleMove === 'function' ? createQuboForSingleMove : null;
+      } catch (error) {
+        console.error("Error in QUBO function generation:", error);
+        return null;
+      }
+    `);
+    
+    // Execute in sandbox
+    const createQuboForSingleMove = createFunction();
+    
+    // Check if the function exists
+    if (typeof createQuboForSingleMove !== 'function') {
+      console.error("No valid QUBO function found in workspace");
+      return null;
+    }
+    
+    // Create a dummy board for testing
+    const dummyBoard = Array(9).fill('');
+    
+    try {
+      const quboData = createQuboForSingleMove(dummyBoard);
+      
+      // Validate QUBO data
+      if (!quboData || (!quboData.variables && !quboData.linear)) {
+        console.error("Invalid QUBO data structure returned from function");
+        return null;
+      }
+      
+      // If it's the old format, convert to new format
+      if (quboData.linear && quboData.quadratic) {
+        return convertToNewFormat(quboData);
+      }
+      
+      // Return the new PyQUBO format directly
+      return {
+        variables: quboData.variables || {},
+        Constraints: quboData.Constraints || [],
+        Objective: quboData.Objective || "0",
+        Return: quboData.Return || "0"
+      };
+    } catch (executionError) {
+      console.error("Error executing QUBO function:", executionError);
+      return null;
+    }
+  } catch (error) {
+    console.error("Error extracting QUBO data:", error);
+    return null;
+  }
+};
 
   useEffect(() => {
     if (!workspaceRef.current) {
@@ -260,6 +266,122 @@ function displayQuboSolution(quboResponse, logFunction) {
   }
 }
 
+function createQuboForSingleMove(board) {
+  // Initialize collections for PyQUBO model
+  const variables = {};
+  const constraints = [];
+  let objective = "0";
+  let returnExpr = "0*x0 + 1*x1 + 2*x2 + 3*x3 + 4*x4 + 5*x5 + 6*x6 + 7*x7 + 8*x8"; // Default return expression
+  
+  // Step 1: Create binary variables for each empty cell on the board
+  for (let i = 0; i < board.length; i++) {
+    if (board[i] === '') {
+      variables[`x${i}`] = { "type": "Binary" };
+    }
+  }
+  
+  // If no empty cells found, add a dummy variable to prevent errors
+  if (Object.keys(variables).length === 0) {
+    variables["x0"] = { "type": "Binary" };
+  }
+  
+  // Step 2: Add constraint to ensure exactly one move is made
+  const varNames = Object.keys(variables);
+  if (varNames.length > 0) {
+    constraints.push({
+      "lhs": varNames.join(" + "),
+      "comparison": "=",
+      "rhs": 1
+    });
+  }
+  
+  // Step 3: Build up objective terms
+  const objectiveTerms = [];
+  
+  // Strategic position weights
+  // Center (4) gets highest weight
+  if (board[4] === '') {
+    objectiveTerms.push(`9 * x4`);
+  }
+  
+  // Corners (0, 2, 6, 8) get medium weight
+  const corners = [0, 2, 6, 8];
+  corners.forEach(corner => {
+    if (board[corner] === '') {
+      objectiveTerms.push(`7 * x${corner}`);
+    }
+  });
+  
+  // Edges (1, 3, 5, 7) get lower weight
+  const edges = [1, 3, 5, 7];
+  edges.forEach(edge => {
+    if (board[edge] === '') {
+      objectiveTerms.push(`5 * x${edge}`);
+    }
+  });
+  
+  // Winning move detection
+  const lines = [
+    [0, 1, 2], [3, 4, 5], [6, 7, 8], // Rows
+    [0, 3, 6], [1, 4, 7], [2, 5, 8], // Columns
+    [0, 4, 8], [2, 4, 6]             // Diagonals
+  ];
+  
+  lines.forEach(line => {
+    // Count how many of each type in the line
+    let playerCells = 0;
+    let opponentCells = 0;
+    let emptyCells = [];
+    
+    line.forEach(idx => {
+      if (board[idx] === 'X') playerCells++;
+      else if (board[idx] === 'O') opponentCells++;
+      else if (board[idx] === '') emptyCells.push(idx);
+    });
+    
+    // Winning move: if we have 2 in a row and an empty cell
+    if (playerCells === 2 && emptyCells.length === 1) {
+      objectiveTerms.push(`10 * x${emptyCells[0]}`);
+    }
+    // Blocking move: if opponent has 2 in a row and we can block
+    else if (opponentCells === 2 && emptyCells.length === 1) {
+      objectiveTerms.push(`8 * x${emptyCells[0]}`);
+    }
+    // Opportunity: if we have 1 in a row and 2 empty cells
+    else if (playerCells === 1 && emptyCells.length === 2) {
+      emptyCells.forEach(cell => {
+        objectiveTerms.push(`1.5 * x${cell}`);
+      });
+    }
+  });
+  
+  // Combine all objective terms - CRITICAL: We want to maximize these values,
+  // but for QUBO we need to negate for minimization. The server API will handle this.
+  if (objectiveTerms.length > 0) {
+    objective = objectiveTerms.join(" + ");
+  }
+  
+  // Step 4: Build the return expression to map variables to their indices
+  const returnTerms = [];
+  Object.keys(variables).forEach(varName => {
+    // Extract the index from the variable name (x0, x1, etc.)
+    const index = varName.replace('x', '');
+    returnTerms.push(`${index} * ${varName}`);
+  });
+  
+  if (returnTerms.length > 0) {
+    returnExpr = returnTerms.join(" + ");
+  }
+  
+  // Return the complete QUBO model
+  return {
+    "variables": variables,
+    "Constraints": constraints,
+    "Objective": objective,
+    "Return": returnExpr
+  };
+}
+
   // Function to analyze move quality
   function analyzeMoveQuality(cellIndex, logFunction) {
     // Define the board positions by strategic importance
@@ -351,6 +473,89 @@ function displayQuboSolution(quboResponse, logFunction) {
     return <button onClick={handleSaveAsBlock}>Save Blocks</button>;
   }
 
+  const generateQUBOData = (code, board) => {
+    try {
+      // Create sandbox function to execute the code
+      const functionBody = `
+        try {
+          ${code}
+          return typeof createQuboForSingleMove === 'function' ? createQuboForSingleMove : null;
+        } catch (err) {
+          console.error("Function evaluation error:", err);
+          return null;
+        }
+      `;
+      
+      const functionCreator = new Function('board', functionBody);
+      const createQuboForSingleMove = functionCreator(board);
+      
+      if (typeof createQuboForSingleMove !== 'function') {
+        throw new Error("No valid QUBO function found in code");
+      }
+      
+      // Execute the function with the board
+      const quboData = createQuboForSingleMove(board);
+      
+      if (!quboData || typeof quboData !== 'object') {
+        throw new Error("Function did not return a valid QUBO object");
+      }
+      
+      // Ensure the QUBO data has the required fields
+      if (!quboData.variables || Object.keys(quboData.variables).length === 0) {
+        // Create variables only for empty cells
+        quboData.variables = {};
+        for (let i = 0; i < board.length; i++) {
+          if (board[i] === '') {
+            quboData.variables[`x${i}`] = { "type": "Binary" };
+          }
+        }
+        
+        // If still empty, add a dummy variable to prevent empty variables error
+        if (Object.keys(quboData.variables).length === 0) {
+          quboData.variables["x0"] = { "type": "Binary" };
+        }
+      }
+      
+      // Ensure Constraints is an array
+      if (!Array.isArray(quboData.Constraints)) {
+        quboData.Constraints = [];
+      }
+      
+      // Add a constraint for exactly one move if none exists
+      if (quboData.Constraints.length === 0) {
+        const varNames = Object.keys(quboData.variables);
+        if (varNames.length > 0) {
+          quboData.Constraints.push({
+            "lhs": varNames.join(" + "),
+            "comparison": "=",
+            "rhs": 1
+          });
+        }
+      }
+      
+      // Ensure Return exists (this is important)
+      if (!quboData.Return || quboData.Return.trim() === '') {
+        // Create a default return expression based on variables
+        const returnTerms = [];
+        Object.keys(quboData.variables).forEach(varName => {
+          const index = varName.replace('x', '');
+          returnTerms.push(`${index}*${varName}`);
+        });
+        
+        if (returnTerms.length > 0) {
+          quboData.Return = returnTerms.join(' + ');
+        } else {
+          quboData.Return = "0";
+        }
+      }
+      
+      return quboData;
+    } catch (error) {
+      console.error("Error generating QUBO data:", error);
+      throw error;
+    }
+  };
+
   // GenerateCodeButton component
   function GenerateCodeButton({ workspace, blocklyCodeHandlingFunction }) {
     // Handle Generate button click
@@ -358,15 +563,22 @@ function displayQuboSolution(quboResponse, logFunction) {
       if (workspace) {
         const code = javascriptGenerator.workspaceToCode(workspace);
         blocklyCodeHandlingFunction(code); // Sets the blockly component's code state
-
-        // Extract QUBO data from the workspace using our updated function
-        const quboData = extractQUBOData(workspace);
         
-        // Log the generated QUBO JSON
-        console.log("📤 Sending QUBO Data to Server:", JSON.stringify(quboData, null, 2));
-        log('> Generated PyQUBO-compatible QUBO data\n\n');
-
         try {
+          if (!code || code.trim() === '') {
+            throw new Error("No code generated. Please add blocks to create a QUBO model.");
+          }
+          
+          // Generate QUBO data
+          log('> Generating QUBO model from your code\n\n');
+          const dummyBoard = Array(9).fill('');
+          const quboData = generateQUBOData(code, dummyBoard);
+          
+          // Log the generated QUBO JSON
+          console.log("📤 Sending QUBO Data to Server:", JSON.stringify(quboData, null, 2));
+          log('> Generated PyQUBO-compatible QUBO data\n\n');
+          
+          // Send to server
           const response = await fetch("http://127.0.0.1:8000/quantum", {
             method: "POST",
             headers: {
@@ -374,31 +586,30 @@ function displayQuboSolution(quboResponse, logFunction) {
             },
             body: JSON.stringify(quboData),
           });
-
+          
+          if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(`Server Error: ${errorData.error || 'Unknown server error'}`);
+          }
+          
           const result = await response.json();
           console.log("✅ Server Response:", result);
           log(`> Server Response: ${JSON.stringify(result, null, 2)}\n\n`);
-
+          
           // Store the QUBO response globally
           window.quboResponse = result;
-
-          if (!response.ok) {
-            throw new Error(`Server Error: ${result.error}`);
-          }
-
+          
           // Check if display block is used in the code
           if (code.includes("Display QUBO results")) {
-            // Display the QUBO results
             displayQuboSolution(result, log);
           }
-
         } catch (error) {
           console.error("❌ Error Sending Data:", error);
           log(`> Error: ${error.message}\n\n`);
         }
       }
     };
-
+  
     return (
       <>
         <button id="generate-btn" onClick={handleGenerate}>Generate Code</button>

@@ -267,6 +267,14 @@ Blockly.Blocks['pyqubo_model'] = {
           "check": null
         }
       ],
+      "message4": "Return %1",
+      "args4": [
+        {
+          "type": "input_statement",
+          "name": "RETURN",
+          "check": null
+        }
+      ],
       "colour": 230,
       "tooltip": "Create a complete QUBO model",
       "helpUrl": ""
@@ -320,6 +328,116 @@ Blockly.Blocks['pyqubo_result_display'] = {
   }
 };
 
+// Create a PyQUBO Return Expression Block
+Blockly.Blocks['pyqubo_return_expression'] = {
+  init: function() {
+    this.appendValueInput("EXPRESSION")
+        .setCheck(["String", "Number", "Boolean"])
+        .appendField("Set return expression to");
+    this.setPreviousStatement(true, null);
+    this.setNextStatement(true, null);
+    this.setColour(230);
+    this.setTooltip("Define what values to return from the quantum solution");
+  }
+};
+
+// Complex Expression Block
+Blockly.Blocks['pyqubo_complex_expression'] = {
+  init: function() {
+    this.appendDummyInput()
+        .appendField("Expression:");
+    this.appendValueInput("EXPRESSION")
+        .setCheck(["String", "Number"]);
+    this.setOutput(true, ["String", "Number"]);
+    this.setColour(230);
+    this.setTooltip("Enter a complex mathematical expression");
+    this.setHelpUrl("");
+  }
+};
+
+// Power/Exponent Block
+Blockly.Blocks['pyqubo_power'] = {
+  init: function() {
+    this.appendValueInput("BASE")
+        .setCheck(["String", "Number"]);
+    this.appendValueInput("EXPONENT")
+        .setCheck("Number")
+        .appendField("^");
+    this.setInputsInline(true);
+    this.setOutput(true, ["String", "Number"]);
+    this.setColour(230);
+    this.setTooltip("Raise a value to a power");
+    this.setHelpUrl("");
+  }
+};
+
+// Integer Variable Block
+Blockly.Blocks['pyqubo_integer_variable'] = {
+  init: function() {
+    this.appendDummyInput()
+        .appendField("Create Integer variable")
+        .appendField(new Blockly.FieldTextInput(""), "NAME")
+        .appendField("range")
+        .appendField(new Blockly.FieldNumber(0), "LOWER")
+        .appendField("to")
+        .appendField(new Blockly.FieldNumber(10), "UPPER");
+    this.setPreviousStatement(true, null);
+    this.setNextStatement(true, null);
+    this.setColour(230);
+    this.setTooltip("Create an integer variable with a specific range");
+  }
+};
+
+// Board Cell Value Block
+Blockly.Blocks['board_cell_value'] = {
+  init: function() {
+    this.appendValueInput("INDEX")
+        .setCheck("Number")
+        .appendField("board[");
+    this.appendDummyInput()
+        .appendField("]");
+    this.setInputsInline(true);
+    this.setOutput(true, ["String", "Number"]);
+    this.setColour(245);
+    this.setTooltip("Get the value of a cell on the board");
+    this.setHelpUrl("");
+  }
+};
+
+// Board Cell Condition Block
+Blockly.Blocks['board_cell_condition'] = {
+  init: function() {
+    this.appendValueInput("INDEX")
+        .setCheck("Number")
+        .appendField("board[");
+    this.appendDummyInput()
+        .appendField("] is");
+    this.appendDummyInput()
+        .appendField(new Blockly.FieldDropdown([
+          ["empty", "''"], 
+          ["X", "'X'"], 
+          ["O", "'O'"]
+        ]), "CONDITION");
+    this.setInputsInline(true);
+    this.setOutput(true, "Boolean");
+    this.setColour(245);
+    this.setTooltip("Check if a board cell matches a condition");
+    this.setHelpUrl("");
+  }
+};
+
+// Board is empty count block
+Blockly.Blocks['board_empty_count'] = {
+  init: function() {
+    this.appendDummyInput()
+        .appendField("count of empty cells");
+    this.setOutput(true, "Number");
+    this.setColour(245);
+    this.setTooltip("Counts how many empty cells are on the board");
+    this.setHelpUrl("");
+  }
+};
+
 // Raw text block for expressions without quotes
 Blockly.Blocks['raw_text'] = {
   init: function() {
@@ -341,6 +459,89 @@ Blockly.Blocks['raw_text'] = {
   }
 };
 
+// Improved Empty Cell Variable Block - Creates variables only for empty cells
+Blockly.Blocks['pyqubo_empty_cell_variables'] = {
+  init: function() {
+    this.appendDummyInput()
+        .appendField("Create variables for all empty cells");
+    this.setPreviousStatement(true, null);
+    this.setNextStatement(true, null);
+    this.setColour(230);
+    this.setTooltip("Creates Binary variables only for empty cells on the board");
+    this.setHelpUrl("");
+  }
+};
+
+// One-Move Constraint Block - Ensures exactly one move is made
+Blockly.Blocks['pyqubo_one_move_constraint'] = {
+  init: function() {
+    this.appendDummyInput()
+        .appendField("Add constraint: exactly one move");
+    this.setPreviousStatement(true, null);
+    this.setNextStatement(true, null);
+    this.setColour(230);
+    this.setTooltip("Adds a constraint ensuring exactly one variable is set to 1");
+    this.setHelpUrl("");
+  }
+};
+
+// Strategic Weights Block - Sets weights based on strategic value
+Blockly.Blocks['pyqubo_strategic_weights'] = {
+  init: function() {
+    this.appendDummyInput()
+        .appendField("Set strategic weights");
+    this.appendValueInput("CENTER_WEIGHT")
+        .setCheck("Number")
+        .appendField("Center weight:");
+    this.appendValueInput("CORNER_WEIGHT")
+        .setCheck("Number")
+        .appendField("Corner weight:");
+    this.appendValueInput("EDGE_WEIGHT")
+        .setCheck("Number")
+        .appendField("Edge weight:");
+    this.setPreviousStatement(true, null);
+    this.setNextStatement(true, null);
+    this.setColour(230);
+    this.setTooltip("Sets weights based on strategic value of board positions");
+    this.setHelpUrl("");
+  }
+};
+
+// Winning Move Detection Block - Prioritizes winning and blocking moves
+Blockly.Blocks['pyqubo_winning_move_detection'] = {
+  init: function() {
+    this.appendDummyInput()
+        .appendField("Add winning move detection");
+    this.appendValueInput("WIN_WEIGHT")
+        .setCheck("Number")
+        .appendField("Winning move weight:");
+    this.appendValueInput("BLOCK_WEIGHT")
+        .setCheck("Number")
+        .appendField("Blocking move weight:");
+    this.appendValueInput("SETUP_WEIGHT")
+        .setCheck("Number")
+        .appendField("Setup move weight:");
+    this.setPreviousStatement(true, null);
+    this.setNextStatement(true, null);
+    this.setColour(230);
+    this.setTooltip("Detects and prioritizes winning and blocking moves");
+    this.setHelpUrl("");
+  }
+};
+
+// Default Return Expression Block - Creates a standard return expression
+Blockly.Blocks['pyqubo_default_return'] = {
+  init: function() {
+    this.appendDummyInput()
+        .appendField("Set default return expression");
+    this.setPreviousStatement(true, null);
+    this.setNextStatement(true, null);
+    this.setColour(230);
+    this.setTooltip("Creates a return expression mapping variables to their indices");
+    this.setHelpUrl("");
+  }
+};
+
 export default {
   blocks: [
     'pyqubo_variable',
@@ -355,6 +556,18 @@ export default {
     'pyqubo_model',
     'pyqubo_function',
     'pyqubo_result_display',
-    'raw_text'
+    'raw_text',
+    'pyqubo_return_expression',
+    'pyqubo_complex_expression',
+    'pyqubo_power',
+    'pyqubo_integer_variable',
+    'board_cell_value',
+    'board_cell_condition',
+    'board_empty_count',
+    'pyqubo_empty_cell_variables',
+    'pyqubo_one_move_constraint',
+    'pyqubo_strategic_weights',
+    'pyqubo_winning_move_detection',
+    'pyqubo_default_return'
   ]
 };

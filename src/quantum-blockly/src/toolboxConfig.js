@@ -160,11 +160,17 @@ export const toolboxConfig = {
           kind: "block", 
           type: "pyqubo_array_variable"
         },
+        // Integer variable
+        {
+          kind: "block",
+          type: "pyqubo_integer_variable"
+        },
         // 2D Array shape input block
         { 
           kind: "block", 
           type: "array_shape_input"
         },
+        
         // --- Constraints and Objective ---
         {
           kind: "label",
@@ -180,6 +186,11 @@ export const toolboxConfig = {
           kind: "block", 
           type: "pyqubo_objective"
         },
+        // Return Expression
+        {
+          kind: "block",
+          type: "pyqubo_return_expression"
+        },
         
         // --- Variable References ---
         {
@@ -191,6 +202,81 @@ export const toolboxConfig = {
         // Array reference blocks
         { kind: "block", type: "pyqubo_array_reference" },
         
+        // --- Board State Integration ---
+        {
+          kind: "label",
+          text: "Board State"
+        },
+        // Board cell value
+        { kind: "block", type: "board_cell_value" },
+        // Board cell condition
+        { kind: "block", type: "board_cell_condition" },
+        // Board empty count
+        { kind: "block", type: "board_empty_count" },
+        
+        // --- Smart QUBO Blocks ---
+        {
+          kind: "label",
+          text: "Smart QUBO Blocks"
+        },
+        // Empty cell variables block
+        { 
+          kind: "block", 
+          type: "pyqubo_empty_cell_variables" 
+        },
+        // One move constraint block
+        { 
+          kind: "block", 
+          type: "pyqubo_one_move_constraint" 
+        },
+        // Strategic weights block
+        { 
+          kind: "block", 
+          type: "pyqubo_strategic_weights",
+          inputs: {
+            CENTER_WEIGHT: {
+              shadow: { type: "math_number", fields: { NUM: 9 } }
+            },
+            CORNER_WEIGHT: {
+              shadow: { type: "math_number", fields: { NUM: 7 } }
+            },
+            EDGE_WEIGHT: {
+              shadow: { type: "math_number", fields: { NUM: 5 } }
+            }
+          }
+        },
+        // Winning move detection block
+        { 
+          kind: "block", 
+          type: "pyqubo_winning_move_detection",
+          inputs: {
+            WIN_WEIGHT: {
+              shadow: { type: "math_number", fields: { NUM: 10 } }
+            },
+            BLOCK_WEIGHT: {
+              shadow: { type: "math_number", fields: { NUM: 8 } }
+            },
+            SETUP_WEIGHT: {
+              shadow: { type: "math_number", fields: { NUM: 1.5 } }
+            }
+          }
+        },
+        // Default return expression block
+        { 
+          kind: "block", 
+          type: "pyqubo_default_return" 
+        },
+        
+        // --- Complex Expressions ---
+        {
+          kind: "label",
+          text: "Complex Expressions"
+        },
+        // Complex expression block
+        { kind: "block", type: "pyqubo_complex_expression" },
+        // Power/exponent block
+        { kind: "block", type: "pyqubo_power" },
+        
         // --- Array Utilities ---
         {
           kind: "label",
@@ -199,7 +285,7 @@ export const toolboxConfig = {
         // Array sum
         { kind: "block", type: "pyqubo_array_sum" },
         
-        // --- Expressions ---
+        // --- Expression Building ---
         {
           kind: "label",
           text: "Expression Building"
@@ -210,7 +296,7 @@ export const toolboxConfig = {
         { kind: "block", type: "raw_text" }
       ]
     },
-    
+
     // Saved Blocks Category
     {
       kind: "category",

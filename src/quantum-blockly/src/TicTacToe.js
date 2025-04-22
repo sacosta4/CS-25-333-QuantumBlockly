@@ -26,55 +26,48 @@ const TicTacToe = ({ quboCode, log }) => {
   // Helper function for server communication
   const sendQuboToServer = async (qubo) => {
     try {
-      // Deep clone and sanitize the QUBO object
-      const sanitizedQubo = JSON.parse(JSON.stringify(qubo));
+      // Add detailed logging to see what's being sent
+      console.log("QUBO payload being sent to server:", JSON.stringify(qubo, null, 2));
+      
+      // Check if qubo is null or undefined
+      if (!qubo) {
+        throw new Error("No QUBO model provided");
+      }
       
       // Ensure required fields exist
-      sanitizedQubo.variables = sanitizedQubo.variables || {};
-      sanitizedQubo.Constraints = sanitizedQubo.Constraints || [];
-      sanitizedQubo.Objective = sanitizedQubo.Objective || "0";
-      
-      // Make sure variables is an object, not an array
-      if (Array.isArray(sanitizedQubo.variables)) {
-        const varsObj = {};
-        sanitizedQubo.variables.forEach((v, i) => {
-          varsObj[`x${i}`] = { type: "Binary" };
-        });
-        sanitizedQubo.variables = varsObj;
+      if (!qubo.variables) {
+        throw new Error("QUBO model is missing variables");
       }
       
-      // Check if variables are empty
-      if (Object.keys(sanitizedQubo.variables).length === 0) {
-        throw new Error("No variables defined in QUBO model");
+      if (!Array.isArray(qubo.Constraints)) {
+        console.log("Fixing constraints array");
+        qubo.Constraints = [];
       }
       
-      // Ensure all variables have proper type
-      Object.keys(sanitizedQubo.variables).forEach(key => {
-        if (typeof sanitizedQubo.variables[key] !== 'object') {
-          sanitizedQubo.variables[key] = { type: "Binary" };
-        }
-        if (!sanitizedQubo.variables[key].type) {
-          sanitizedQubo.variables[key].type = "Binary";
-        }
-      });
-      
-      // Ensure Constraints is an array
-      if (!Array.isArray(sanitizedQubo.Constraints)) {
-        sanitizedQubo.Constraints = [];
+      if (!qubo.Objective) {
+        throw new Error("QUBO model is missing an objective function");
       }
       
-      // Ensure Objective is a string
-      if (typeof sanitizedQubo.Objective !== 'string') {
-        sanitizedQubo.Objective = "0";
+      if (!qubo.Return) {
+        throw new Error("QUBO model is missing a return expression");
+      }
+      
+      // Variables must be non-empty
+      if (Object.keys(qubo.variables).length === 0) {
+        throw new Error("QUBO model has empty variables object");
       }
       
       // Add timeout to prevent hanging
-      const response = await axios.post('http://localhost:8000/quantum', sanitizedQubo, {
+      const response = await axios.post('http://localhost:8000/quantum', qubo, {
         headers: {
           'Content-Type': 'application/json'
         },
         timeout: 5000 // 5 seconds timeout
       });
+      
+      // Check response status
+      console.log("Server response status:", response.status);
+      console.log("Server response data:", JSON.stringify(response.data, null, 2));
       
       // Check for error in the response
       if (response.data?.error) {
@@ -87,8 +80,14 @@ const TicTacToe = ({ quboCode, log }) => {
       };
     } catch (error) {
       console.error("Server communication error:", error);
+      console.error("Error details:", error.message);
       
-      // Handle the error and provide clear feedback
+      if (error.response) {
+        console.error("Response error data:", error.response.data);
+        console.error("Response status:", error.response.status);
+      }
+      
+      // Get detailed error message
       let errorDetails = "Unknown error";
       
       if (error.response) {
@@ -270,59 +269,75 @@ const createBoardVisual = (weights, board) => {
 const extractCellWeights = (responseData, availableCells, currentBoard) => {
   const cellWeights = {};
 
-  // Process diagonal terms from QUBO matrix
-  if (Object.keys(responseData.qubo || {}).length > 0) {
-    Object.keys(responseData.qubo).forEach((key) => {
-      try {
-        // Look for diagonal terms like ('x0', 'x0')
-        const diagMatch = key.match(/\('([a-zA-Z_]+)(\d+)', '([a-zA-Z_]+)(\d+)'\)/);
-        if (diagMatch && diagMatch[2] === diagMatch[4]) {
-          const cellIdx = parseInt(diagMatch[2]);
-          
-          if (!isNaN(cellIdx) && (!availableCells || availableCells.includes(cellIdx)) &&
-              (!currentBoard || currentBoard[cellIdx] === '')) {
-            // Use absolute value of diagonal terms (they're typically negative in QUBO)
-            cellWeights[cellIdx] = Math.abs(responseData.qubo[key]);
-          }
-          return;
-        }
-        
-        // Also try to match single variable patterns like ('x0')
-        const singleMatch = key.match(/\('([a-zA-Z_]+)(\d+)'\)/);
-        if (singleMatch && singleMatch[2]) {
-          const cellIdx = parseInt(singleMatch[2]);
-          
-          if (!isNaN(cellIdx) && (!availableCells || availableCells.includes(cellIdx)) &&
-              (!currentBoard || currentBoard[cellIdx] === '')) {
-            // Store absolute value of weight
-            cellWeights[cellIdx] = Math.abs(responseData.qubo[key]);
-          }
-        }
-      } catch (parseError) {
-        console.error("Error parsing variable name:", parseError, "Key:", key);
+  // First check if the response includes a solution
+  if (responseData.solution) {
+    const match = responseData.solution.match(/x(\d+)/);
+    if (match) {
+      const cellIdx = parseInt(match[1]);
+      if (!isNaN(cellIdx) && (!availableCells || availableCells.includes(cellIdx)) &&
+          (!currentBoard || currentBoard[cellIdx] === '')) {
+        // The solution cell gets the highest weight
+        cellWeights[cellIdx] = 10;
       }
-    });
+    }
   }
 
-  // If sample contains a selected cell (value=1), boost its weight slightly
-  if (responseData.sample && Object.keys(cellWeights).length > 0) {
+  // Process sample data directly since we don't have the QUBO matrix
+  if (responseData.sample && Object.keys(responseData.sample).length > 0) {
     Object.entries(responseData.sample).forEach(([key, value]) => {
-      if (value === 1) {
-        const match = key.match(/\d+/);
-        if (match) {
-          const cellIdx = parseInt(match[0]);
-          if (!isNaN(cellIdx) && cellWeights[cellIdx] && 
-              (!availableCells || availableCells.includes(cellIdx)) && 
-              (!currentBoard || currentBoard[cellIdx] === '')) {
-            // Boost the weight of the selected cell slightly (by 1)
-            cellWeights[cellIdx] += 1;
+      const match = key.match(/x(\d+)/);
+      if (match) {
+        const cellIdx = parseInt(match[1]);
+        if (!isNaN(cellIdx) && (!availableCells || availableCells.includes(cellIdx)) &&
+            (!currentBoard || currentBoard[cellIdx] === '')) {
+          // For the selected cell (value === 1), give it the highest weight
+          // For other cells, assign weights based on their position
+          if (value === 1) {
+            cellWeights[cellIdx] = 10;
+          } else {
+            // Assign strategic weights based on position
+            if (cellIdx === 4) { // Center
+              cellWeights[cellIdx] = 9;
+            } else if ([0, 2, 6, 8].includes(cellIdx)) { // Corners
+              cellWeights[cellIdx] = 7;
+            } else { // Edges
+              cellWeights[cellIdx] = 5;
+            }
           }
         }
       }
     });
   }
+  
+  // If we have the return value, use it as an additional signal
+  if (responseData.return !== undefined) {
+    const returnValue = parseInt(responseData.return);
+    if (!isNaN(returnValue) && returnValue >= 0 && returnValue < 9 &&
+        (!availableCells || availableCells.includes(returnValue)) &&
+        (!currentBoard || currentBoard[returnValue] === '')) {
+      // Boost the weight of the returned cell
+      cellWeights[returnValue] = (cellWeights[returnValue] || 0) + 5;
+    }
+  }
 
-  // No fallback - if no weights were extracted, return empty object
+  // If no weights were extracted, generate fallback weights based on strategic positions
+  if (Object.keys(cellWeights).length === 0) {
+    // Generate fallback weights for all available cells
+    const cells = availableCells || 
+                 (currentBoard ? currentBoard.map((cell, idx) => cell === '' ? idx : null).filter(idx => idx !== null) : 
+                                [0, 1, 2, 3, 4, 5, 6, 7, 8]);
+    
+    cells.forEach(cellIdx => {
+      if (cellIdx === 4) { // Center
+        cellWeights[cellIdx] = 9;
+      } else if ([0, 2, 6, 8].includes(cellIdx)) { // Corners
+        cellWeights[cellIdx] = 7;
+      } else { // Edges
+        cellWeights[cellIdx] = 5;
+      }
+    });
+  }
+
   return cellWeights;
 };
 
@@ -396,65 +411,103 @@ const extractCellWeights = (responseData, availableCells, currentBoard) => {
   
       // Basic validation of QUBO code
       if (!quboCode || typeof quboCode !== "string" || quboCode.trim() === '') {
-        throw new Error("Invalid or empty Blockly code");
+        throw new Error("No Blockly code found. Please create a QUBO model first.");
       }
   
       // Check if code contains the required function
       if (!quboCode.includes('createQuboForSingleMove')) {
-        throw new Error("Function 'createQuboForSingleMove' not found in your code");
+        throw new Error("Function 'createQuboForSingleMove' not found in your code.");
       }
-  
+      
       log('> Evaluating your quantum algorithm...\n\n');
   
-      // More robust function evaluation
-      const functionBody = `
+      // Add debugging to see what's in the quboCode
+      console.log("QUBO Code to evaluate:", quboCode);
+      
+      // Create function in a safer way
+      const functionCreator = new Function('board', `
         try {
           ${quboCode}
+          console.log("Function created successfully");
           return typeof createQuboForSingleMove === 'function' ? createQuboForSingleMove : null;
         } catch (err) {
           console.error("Function evaluation error:", err);
           return null;
         }
-      `;
+      `);
       
-      // Create function in a safer way
-      const functionCreator = new Function('board', functionBody);
       const createQuboForSingleMove = functionCreator(cells);
   
       if (typeof createQuboForSingleMove !== 'function') {
         throw new Error("Could not create a valid function from your code");
       }
   
-      // Get QUBO data
+      // Get QUBO data with more debugging
       let qubo;
       try {
         qubo = createQuboForSingleMove(cells);
+        console.log("QUBO data returned from function:", JSON.stringify(qubo, null, 2));
+        
+        // Validate that we have a legitimate QUBO object
+        if (!qubo || typeof qubo !== 'object') {
+          throw new Error("Your algorithm must return a valid QUBO object");
+        }
+        
+        // Ensure the QUBO has the correct format - critical fix here
+        if (!qubo.variables || Object.keys(qubo.variables).length === 0) {
+          throw new Error("No variables defined in your QUBO model");
+        }
+        
+        // Directly fix the objective format if it's a maximize problem
+        // Check if the objective starts with a negative and contains parentheses
+        if (qubo.Objective && qubo.Objective.startsWith('-') && qubo.Objective.includes('(')) {
+          // Remove the leading minus and parentheses, then apply minus to each term
+          const innerExpression = qubo.Objective.replace(/^-\((.*)\)$/, '$1');
+          const terms = innerExpression.split('+').map(term => {
+            term = term.trim();
+            if (term.startsWith('-')) {
+              return term.substring(1).trim();
+            } else {
+              return '-' + term;
+            }
+          });
+          qubo.Objective = terms.join(' + ');
+          console.log("Fixed objective:", qubo.Objective);
+        }
+        
+        // Ensure Return exists
+        if (!qubo.Return || typeof qubo.Return !== 'string' || qubo.Return.trim() === '') {
+          qubo.Return = availableCells.map(idx => `${idx}*x${idx}`).join(' + ');
+        }
       } catch (quboError) {
         console.error("Error getting QUBO data:", quboError);
         throw new Error(`Error when running your algorithm: ${quboError.message}`);
       }
   
-      // Validate QUBO output
-      if (!qubo || typeof qubo !== 'object') {
-        throw new Error("Your algorithm must return a valid QUBO object");
-      }
-  
-      // Send QUBO to server
+      // Send QUBO to server with more logging
       log("> Sending quantum problem to solver...\n\n");
+      console.log("Final QUBO data being sent:", JSON.stringify(qubo, null, 2));
+
       const serverResult = await sendQuboToServer(qubo);
-      
+
+      // Add additional logging to debug the server response
+      console.log("Server raw response:", serverResult);
+
       // Handle error response from server
       if (serverResult.status === 'error') {
         throw new Error(serverResult.error || "Unknown server error");
       }
-  
+
       const responseData = serverResult.data;
-  
-      // Check for empty response
-      if (!responseData || !responseData.qubo || Object.keys(responseData.qubo).length === 0) {
-        throw new Error("Server returned an empty QUBO model");
+
+      // Check for essential response properties
+      if (!responseData || !responseData.sample || !responseData.solution) {
+        throw new Error("Server returned an invalid response");
       }
-      
+
+      // Log the full response for debugging
+      log(`> Full server response: ${JSON.stringify(responseData)}\n\n`);
+
       // Display the formatted QUBO data for educational purposes
       log(`> Received quantum solution\n\n`);
       log(formatQuboForLog(responseData, cells) + "\n\n");
@@ -499,10 +552,10 @@ const extractCellWeights = (responseData, availableCells, currentBoard) => {
       setTimeout(() => {
         resetToSetup();
       }, 1000);
+    } finally {
+      // Always set processing to false at the end
+      setProcessingMove(false);
     }
-    
-    // Always set processing to false at the end
-    setProcessingMove(false);
   };
 
   // Function to handle CPU moves
