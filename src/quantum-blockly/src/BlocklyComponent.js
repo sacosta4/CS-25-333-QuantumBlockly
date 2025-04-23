@@ -269,60 +269,36 @@ function createQuboForSingleMove(board) {
   // Initialize collections for PyQUBO model
   const variables = {};
   const constraints = [];
+  let objectiveTerms = [];
   let objective = "0";
-  let returnExpr = "";
+  let returnExpr = "0";
 
-  // Define weights as variables with default values
-  // These will be replaced by Blockly with actual values from user input
-  const winWeight = 100;     // Replace with WINNING_MOVE_WEIGHT in Blockly
-  const blockWeight = 90;    // Replace with BLOCKING_MOVE_WEIGHT in Blockly
-  const setupWeight = 30;    // Replace with SETUP_MOVE_WEIGHT in Blockly
-  const centerWeight = 9;    // Replace with CENTER_WEIGHT in Blockly
-  const cornerWeight = 7;    // Replace with CORNER_WEIGHT in Blockly
-  const edgeWeight = 5;      // Replace with EDGE_WEIGHT in Blockly
-  const defaultWeight = 1;   // Default value for remaining cells
-
-  // Step 1: Create variables only for empty cells
-  const emptyCells = [];
+  // STEP 1: Create variables only for empty cells
   for (let i = 0; i < board.length; i++) {
     if (board[i] === '') {
       variables[`x${i}`] = { "type": "Binary" };
-      emptyCells.push(i);
     }
   }
 
-  // Handle edge cases
-  if (emptyCells.length === 0) {
-    // If board is full, add a dummy variable
+  // If no empty cells, add a dummy variable to prevent errors
+  if (Object.keys(variables).length === 0) {
     variables["x0"] = { "type": "Binary" };
+    // Force this variable to be 0 since there are no valid moves
     constraints.push({
       "lhs": "x0",
       "comparison": "=",
       "rhs": 0
     });
+    
     return {
       "variables": variables,
       "Constraints": constraints,
       "Objective": "0",
       "Return": "0"
     };
-  } else if (emptyCells.length === 1) {
-    // If only one cell is empty, force that cell
-    const cellIndex = emptyCells[0];
-    constraints.push({
-      "lhs": `x${cellIndex}`,
-      "comparison": "=",
-      "rhs": 1
-    });
-    return {
-      "variables": variables,
-      "Constraints": constraints,
-      "Objective": `1 * x${cellIndex}`,
-      "Return": `${cellIndex}`
-    };
   }
 
-  // Step 2: Add constraint to ensure exactly one move is made
+  // STEP 2: Add constraint to ensure exactly one move is made
   const varNames = Object.keys(variables);
   constraints.push({
     "lhs": varNames.join(" + "),
@@ -330,97 +306,115 @@ function createQuboForSingleMove(board) {
     "rhs": 1
   });
 
-  // Step 3: Calculate strategic position weights
-  const objectiveTerms = [];
+  // STEP 3: Define weights for different strategic positions
+  // These values will be directly used in the objective function
+  const WINNING_MOVE_WEIGHT = 100;  // Highest priority - winning move
+  const BLOCKING_MOVE_WEIGHT = 90;  // High priority - block opponent
+  const SETUP_MOVE_WEIGHT = 30;     // Medium priority - set up future win
+  const CENTER_WEIGHT = 9;          // Strong position
+  const CORNER_WEIGHT = 7;          // Good position
+  const EDGE_WEIGHT = 5;            // Less optimal position
+  const DEFAULT_WEIGHT = 1;         // Default for any cell
+
+  // Keep track of cells we've already assigned weights to
   const processedCells = new Set();
-  
-  // Define winning lines
+
+  // STEP 4: Analyze winning lines for strategic opportunities
   const lines = [
     [0, 1, 2], [3, 4, 5], [6, 7, 8], // Rows
     [0, 3, 6], [1, 4, 7], [2, 5, 8], // Columns
     [0, 4, 8], [2, 4, 6]             // Diagonals
   ];
-  
-  // Check for winning and blocking opportunities
+
+  // Check each line for winning or blocking opportunities
   lines.forEach(line => {
+    // Count how many of each type in the line
     let playerCells = 0;
     let opponentCells = 0;
-    let emptyCellsInLine = [];
+    let emptyCells = [];
     
     line.forEach(idx => {
       if (board[idx] === 'X') playerCells++;
       else if (board[idx] === 'O') opponentCells++;
-      else if (board[idx] === '') emptyCellsInLine.push(idx);
+      else if (board[idx] === '') emptyCells.push(idx);
     });
     
-    if (emptyCellsInLine.length === 1) {
-      const cell = emptyCellsInLine[0];
-      // Winning move (2 of our pieces + empty cell)
+    if (emptyCells.length === 1) {
+      const cell = emptyCells[0];
+      
+      // Winning move: if we have 2 in a row and an empty cell
       if (playerCells === 2) {
-        objectiveTerms.push(`${winWeight} * x${cell}`);
+        objectiveTerms.push(`${WINNING_MOVE_WEIGHT} * x${cell}`);
         processedCells.add(cell);
       }
-      // Blocking move (2 of opponent's pieces + empty cell)
+      // Blocking move: if opponent has 2 in a row and we can block
       else if (opponentCells === 2) {
-        objectiveTerms.push(`${blockWeight} * x${cell}`);
+        objectiveTerms.push(`${BLOCKING_MOVE_WEIGHT} * x${cell}`);
         processedCells.add(cell);
       }
     }
-    // Setup moves (1 of our pieces + 2 empty cells)
-    else if (playerCells === 1 && emptyCellsInLine.length === 2) {
-      emptyCellsInLine.forEach(cell => {
+    // Setup move: if we have 1 in a row and 2 empty cells
+    else if (playerCells === 1 && emptyCells.length === 2) {
+      emptyCells.forEach(cell => {
         if (!processedCells.has(cell)) {
-          objectiveTerms.push(`${setupWeight} * x${cell}`);
+          objectiveTerms.push(`${SETUP_MOVE_WEIGHT} * x${cell}`);
           processedCells.add(cell);
         }
       });
     }
   });
-  
-  // Position-based strategy
-  // Center is highest strategic value when no winning/blocking moves
+
+  // STEP 5: Assign position-based strategic weights
+  // Center position (strongest strategic choice)
   if (board[4] === '' && !processedCells.has(4)) {
-    objectiveTerms.push(`${centerWeight} * x4`);
+    objectiveTerms.push(`${CENTER_WEIGHT} * x4`);
     processedCells.add(4);
   }
   
-  // Corners are medium value
-  [0, 2, 6, 8].forEach(corner => {
+  // Corner positions (strong strategic choices)
+  const corners = [0, 2, 6, 8];
+  corners.forEach(corner => {
     if (board[corner] === '' && !processedCells.has(corner)) {
-      objectiveTerms.push(`${cornerWeight} * x${corner}`);
+      objectiveTerms.push(`${CORNER_WEIGHT} * x${corner}`);
       processedCells.add(corner);
     }
   });
   
-  // Edges are lower value
-  [1, 3, 5, 7].forEach(edge => {
+  // Edge positions (moderate strategic choices)
+  const edges = [1, 3, 5, 7];
+  edges.forEach(edge => {
     if (board[edge] === '' && !processedCells.has(edge)) {
-      objectiveTerms.push(`${edgeWeight} * x${edge}`);
+      objectiveTerms.push(`${EDGE_WEIGHT} * x${edge}`);
       processedCells.add(edge);
     }
   });
   
-  // Set a default weight for any remaining cells
-  emptyCells.forEach(cell => {
-    if (!processedCells.has(cell)) {
-      objectiveTerms.push(`${defaultWeight} * x${cell}`);
+  // STEP 6: Assign default weight to any remaining cells
+  // Ensure all empty cells have some weight
+  for (let i = 0; i < board.length; i++) {
+    if (board[i] === '' && !processedCells.has(i)) {
+      objectiveTerms.push(`${DEFAULT_WEIGHT} * x${i}`);
     }
-  });
+  }
   
-  // Join all terms to form the objective function
+  // Combine all terms for the objective function
   if (objectiveTerms.length > 0) {
     objective = objectiveTerms.join(" + ");
   }
+
+  // STEP 7: Create return expression that returns the cell index
+  // This is crucial for interpreting the result correctly
+  const returnTerms = [];
+  Object.keys(variables).forEach(varName => {
+    const index = varName.replace('x', '');
+    returnTerms.push(`${index} * ${varName}`);
+  });
   
-  // Construct a Python-style conditional return expression
-  const cellIndexExpressions = [];
-  for (const varName of varNames) {
-    const cellIndex = parseInt(varName.replace("x", ""));
-    cellIndexExpressions.push(`${cellIndex} if ${varName} else 0`);
+  if (returnTerms.length > 0) {
+    returnExpr = returnTerms.join(" + ");
   }
-  returnExpr = cellIndexExpressions.join(" + ");
-  
-  // Return the complete QUBO model
+
+  // Return the complete QUBO model with all required fields
   return {
     "variables": variables,
     "Constraints": constraints,

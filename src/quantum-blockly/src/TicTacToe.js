@@ -719,102 +719,103 @@ function extractCellWeights(responseData, currentBoard) {
   };
 
   // Handle a win
-  const handleWin = (player) => {
-    // CRITICAL: Check if we're already processing a win to prevent double counting
-    if (processingMove || gameOver) {
-      console.log("Win already being processed, ignoring duplicate win detection");
-      return;
-    }
+const handleWin = (player) => {
+  // CRITICAL: Check if we're already processing a win to prevent double counting
+  if (processingMove || gameOver) {
+    console.log("Win already being processed, ignoring duplicate win detection");
+    return;
+  }
+  
+  // IMMEDIATELY lock ALL game state 
+  setGameOver(true);
+  setProcessingMove(true);
+  
+  // Make a local copy of wins that we'll work with
+  const currentWins = {...playerWins};
+  currentWins[player] += 1;
+  
+  // Log for debugging
+  console.log(`Player ${player} wins. Current wins:`, currentWins);
+  
+  // Set win state BEFORE showing any alerts
+  setPlayerWins(currentWins);
+  
+  // Use a longer timeout to make sure state is fully updated
+  setTimeout(() => {
+    // First alert the win
+    alert(`${player} wins!`);
     
-    // IMMEDIATELY lock ALL game state 
-    setGameOver(true);
-    setProcessingMove(true);
-    
-    // Make a local copy of wins that we'll work with
-    const currentWins = {...playerWins};
-    currentWins[player] += 1;
-    
-    // Log for debugging
-    console.log(`Player ${player} wins. Current wins:`, currentWins);
-    
-    // Set win state BEFORE showing any alerts
-    setPlayerWins(currentWins);
-    
-    // Use a longer timeout to make sure state is fully updated
-    setTimeout(() => {
-      // First alert the win
-      alert(`${player} wins!`);
+    // Then check if series is won based on our local variable (not state)
+    // FIXED: Changed MAX_WINS_DISPLAY to 2 for a 2/3 win condition
+    if (currentWins[player] >= 2) {
+      // Freeze the entire UI completely
+      document.body.style.pointerEvents = 'none';
       
-      // Then check if series is won based on our local variable (not state)
-      if (currentWins[player] >= MAX_WINS_DISPLAY) {
-        // Freeze the entire UI completely
-        document.body.style.pointerEvents = 'none';
+      setTimeout(() => {
+        alert(`Player ${player} has won the best-of-${MAX_WINS_DISPLAY} series!`);
         
+        // Determine unlocks - code similar to before
+        let shouldUnlockMedium = false;
+        let shouldUnlockHard = false;
+        
+        // Medium unlock check
+        if ((player === 'X' && player1Type === 'Human' && player2Type === 'CPU' && player2Difficulty === 'Easy') ||
+            (player === 'O' && player2Type === 'Human' && player1Type === 'CPU' && player1Difficulty === 'Easy') ||
+            (player === 'X' && player1Type === 'Quantum CPU' && player2Type === 'CPU' && player2Difficulty === 'Easy') ||
+            (player === 'O' && player2Type === 'Quantum CPU' && player1Type === 'CPU' && player1Difficulty === 'Easy')) {
+          shouldUnlockMedium = !unlockedDifficulties.includes('Medium');
+        }
+        
+        // Hard unlock check
+        if ((player === 'X' && player1Type === 'Human' && player2Type === 'CPU' && player2Difficulty === 'Medium') ||
+            (player === 'O' && player2Type === 'Human' && player1Type === 'CPU' && player1Difficulty === 'Medium') ||
+            (player === 'X' && player1Type === 'Quantum CPU' && player2Type === 'CPU' && player2Difficulty === 'Medium') ||
+            (player === 'O' && player2Type === 'Quantum CPU' && player1Type === 'CPU' && player1Difficulty === 'Medium')) {
+          shouldUnlockHard = !unlockedDifficulties.includes('Hard');
+        }
+        
+        // Process unlocks in sequence with separate state updates
+        if (shouldUnlockMedium) {
+          setUnlockedDifficulties(prev => {
+            if (prev.includes('Medium')) return prev;
+            alert('Congratulations! "Medium" difficulty unlocked!');
+            return [...prev, 'Medium']; 
+          });
+        } else if (shouldUnlockHard) {
+          setUnlockedDifficulties(prev => {
+            if (prev.includes('Hard')) return prev;
+            alert('Congratulations! "Hard" difficulty unlocked!');
+            return [...prev, 'Hard'];
+          });
+        }
+        
+        // Wait for UI updates then SYNCHRONOUSLY reset everything
         setTimeout(() => {
-          alert(`Player ${player} has won the best-of-${MAX_WINS_DISPLAY} series!`);
+          // Clear all state in one atomic operation
+          setCells(Array(9).fill(''));
+          setCurrentPlayer('X');
+          setPlayerWins({ X: 0, O: 0 });
+          setGameSetup(false);
+          setTurnIndicator('');
+          setGameOver(false);
+          setNextGameReady(false);
+          setProcessingMove(false);
+          setQuantumError(null);
           
-          // Determine unlocks - code similar to before
-          let shouldUnlockMedium = false;
-          let shouldUnlockHard = false;
+          // Re-enable UI
+          document.body.style.pointerEvents = '';
           
-          // Medium unlock check
-          if ((player === 'X' && player1Type === 'Human' && player2Type === 'CPU' && player2Difficulty === 'Easy') ||
-              (player === 'O' && player2Type === 'Human' && player1Type === 'CPU' && player1Difficulty === 'Easy') ||
-              (player === 'X' && player1Type === 'Quantum CPU' && player2Type === 'CPU' && player2Difficulty === 'Easy') ||
-              (player === 'O' && player2Type === 'Quantum CPU' && player1Type === 'CPU' && player1Difficulty === 'Easy')) {
-            shouldUnlockMedium = !unlockedDifficulties.includes('Medium');
-          }
-          
-          // Hard unlock check
-          if ((player === 'X' && player1Type === 'Human' && player2Type === 'CPU' && player2Difficulty === 'Medium') ||
-              (player === 'O' && player2Type === 'Human' && player1Type === 'CPU' && player1Difficulty === 'Medium') ||
-              (player === 'X' && player1Type === 'Quantum CPU' && player2Type === 'CPU' && player2Difficulty === 'Medium') ||
-              (player === 'O' && player2Type === 'Quantum CPU' && player1Type === 'CPU' && player1Difficulty === 'Medium')) {
-            shouldUnlockHard = !unlockedDifficulties.includes('Hard');
-          }
-          
-          // Process unlocks in sequence with separate state updates
-          if (shouldUnlockMedium) {
-            setUnlockedDifficulties(prev => {
-              if (prev.includes('Medium')) return prev;
-              alert('Congratulations! "Medium" difficulty unlocked!');
-              return [...prev, 'Medium']; 
-            });
-          } else if (shouldUnlockHard) {
-            setUnlockedDifficulties(prev => {
-              if (prev.includes('Hard')) return prev;
-              alert('Congratulations! "Hard" difficulty unlocked!');
-              return [...prev, 'Hard'];
-            });
-          }
-          
-          // Wait for UI updates then SYNCHRONOUSLY reset everything
-          setTimeout(() => {
-            // Clear all state in one atomic operation
-            setCells(Array(9).fill(''));
-            setCurrentPlayer('X');
-            setPlayerWins({ X: 0, O: 0 });
-            setGameSetup(false);
-            setTurnIndicator('');
-            setGameOver(false);
-            setNextGameReady(false);
-            setProcessingMove(false);
-            setQuantumError(null);
-            
-            // Re-enable UI
-            document.body.style.pointerEvents = '';
-            
-            log('> Reset to setup after series completion\n\n');
-          }, 300);
-        }, 200);
-      } else {
-        // Series not over - just prepare for next game
-        setNextGameReady(true);
-        setProcessingMove(false);
-        log("> Game complete. Ready for next round\n\n");
-      }
-    }, 250);
-  };
+          log('> Reset to setup after series completion\n\n');
+        }, 300);
+      }, 200);
+    } else {
+      // Series not over - just prepare for next game
+      setNextGameReady(true);
+      setProcessingMove(false);
+      log("> Game complete. Ready for next round\n\n");
+    }
+  }, 250);
+};
 
   // Modify startNextGame to be more atomic
   const startNextGame = () => {
