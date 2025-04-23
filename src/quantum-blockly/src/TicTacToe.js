@@ -266,80 +266,43 @@ const createBoardVisual = (weights, board) => {
 };
 
 // Helper function to extract cell weights from QUBO response
-const extractCellWeights = (responseData, availableCells, currentBoard) => {
+function extractCellWeights(responseData, currentBoard) {
   const cellWeights = {};
 
-  // First check if the response includes a solution
-  if (responseData.solution) {
-    const match = responseData.solution.match(/x(\d+)/);
-    if (match) {
-      const cellIdx = parseInt(match[1]);
-      if (!isNaN(cellIdx) && (!availableCells || availableCells.includes(cellIdx)) &&
-          (!currentBoard || currentBoard[cellIdx] === '')) {
-        // The solution cell gets the highest weight
-        cellWeights[cellIdx] = 10;
-      }
-    }
-  }
-
-  // Process sample data directly since we don't have the QUBO matrix
-  if (responseData.sample && Object.keys(responseData.sample).length > 0) {
-    Object.entries(responseData.sample).forEach(([key, value]) => {
-      const match = key.match(/x(\d+)/);
+  // Process server response to extract weights
+  if (responseData.return_expr) {
+    // Parse the expression into terms
+    const terms = responseData.return_expr.split('+').map(term => term.trim());
+    
+    terms.forEach(term => {
+      // Match terms like "8 * x8" or "0 * x0"
+      const match = term.match(/(\d+)\s*\*\s*x(\d+)/);
       if (match) {
-        const cellIdx = parseInt(match[1]);
-        if (!isNaN(cellIdx) && (!availableCells || availableCells.includes(cellIdx)) &&
-            (!currentBoard || currentBoard[cellIdx] === '')) {
-          // For the selected cell (value === 1), give it the highest weight
-          // For other cells, assign weights based on their position
-          if (value === 1) {
-            cellWeights[cellIdx] = 10;
-          } else {
-            // Assign strategic weights based on position
-            if (cellIdx === 4) { // Center
-              cellWeights[cellIdx] = 9;
-            } else if ([0, 2, 6, 8].includes(cellIdx)) { // Corners
-              cellWeights[cellIdx] = 7;
-            } else { // Edges
-              cellWeights[cellIdx] = 5;
-            }
-          }
+        const weight = parseInt(match[1]);
+        const cellIdx = parseInt(match[2]);
+        
+        // Only include cells that are empty on the current board
+        if (!currentBoard || currentBoard[cellIdx] === '') {
+          cellWeights[cellIdx] = weight;
         }
       }
     });
   }
-  
-  // If we have the return value, use it as an additional signal
-  if (responseData.return !== undefined) {
-    const returnValue = parseInt(responseData.return);
-    if (!isNaN(returnValue) && returnValue >= 0 && returnValue < 9 &&
-        (!availableCells || availableCells.includes(returnValue)) &&
-        (!currentBoard || currentBoard[returnValue] === '')) {
-      // Boost the weight of the returned cell
-      cellWeights[returnValue] = (cellWeights[returnValue] || 0) + 5;
-    }
-  }
 
-  // If no weights were extracted, generate fallback weights based on strategic positions
-  if (Object.keys(cellWeights).length === 0) {
-    // Generate fallback weights for all available cells
-    const cells = availableCells || 
-                 (currentBoard ? currentBoard.map((cell, idx) => cell === '' ? idx : null).filter(idx => idx !== null) : 
-                                [0, 1, 2, 3, 4, 5, 6, 7, 8]);
-    
-    cells.forEach(cellIdx => {
-      if (cellIdx === 4) { // Center
-        cellWeights[cellIdx] = 9;
-      } else if ([0, 2, 6, 8].includes(cellIdx)) { // Corners
-        cellWeights[cellIdx] = 7;
-      } else { // Edges
-        cellWeights[cellIdx] = 5;
+  // If we have sample data, use it to identify the selected cell
+  if (responseData.sample) {
+    Object.entries(responseData.sample).forEach(([key, value]) => {
+      const match = key.match(/x(\d+)/);
+      if (match && value === 1) {
+        const cellIdx = parseInt(match[1]);
+        // Highlight the selected cell with a higher weight
+        cellWeights[cellIdx] = 15; // Mark as selected
       }
     });
   }
 
   return cellWeights;
-};
+}
 
   // Setup effect for player turns
   useEffect(() => {
@@ -421,14 +384,10 @@ const extractCellWeights = (responseData, availableCells, currentBoard) => {
       
       log('> Evaluating your quantum algorithm...\n\n');
   
-      // Add debugging to see what's in the quboCode
-      console.log("QUBO Code to evaluate:", quboCode);
-      
       // Create function in a safer way
       const functionCreator = new Function('board', `
         try {
           ${quboCode}
-          console.log("Function created successfully");
           return typeof createQuboForSingleMove === 'function' ? createQuboForSingleMove : null;
         } catch (err) {
           console.error("Function evaluation error:", err);
@@ -442,118 +401,137 @@ const extractCellWeights = (responseData, availableCells, currentBoard) => {
         throw new Error("Could not create a valid function from your code");
       }
   
-      // Get QUBO data with more debugging
+      // Get QUBO data
       let qubo;
       try {
         qubo = createQuboForSingleMove(cells);
         console.log("QUBO data returned from function:", JSON.stringify(qubo, null, 2));
         
-        // Validate that we have a legitimate QUBO object
+        // Validate QUBO
         if (!qubo || typeof qubo !== 'object') {
           throw new Error("Your algorithm must return a valid QUBO object");
         }
         
-        // Ensure the QUBO has the correct format - critical fix here
+        // Ensure the QUBO has the correct format
         if (!qubo.variables || Object.keys(qubo.variables).length === 0) {
           throw new Error("No variables defined in your QUBO model");
         }
         
-        // Directly fix the objective format if it's a maximize problem
-        // Check if the objective starts with a negative and contains parentheses
-        if (qubo.Objective && qubo.Objective.startsWith('-') && qubo.Objective.includes('(')) {
-          // Remove the leading minus and parentheses, then apply minus to each term
-          const innerExpression = qubo.Objective.replace(/^-\((.*)\)$/, '$1');
-          const terms = innerExpression.split('+').map(term => {
-            term = term.trim();
-            if (term.startsWith('-')) {
-              return term.substring(1).trim();
-            } else {
-              return '-' + term;
-            }
-          });
-          qubo.Objective = terms.join(' + ');
-          console.log("Fixed objective:", qubo.Objective);
-        }
-        
-        // Ensure Return exists
+        // Fix missing Return expression
         if (!qubo.Return || typeof qubo.Return !== 'string' || qubo.Return.trim() === '') {
-          qubo.Return = availableCells.map(idx => `${idx}*x${idx}`).join(' + ');
+          const returnTerms = [];
+          Object.keys(qubo.variables).forEach(varName => {
+            const index = varName.replace('x', '');
+            returnTerms.push(`${index} * ${varName}`);
+          });
+          qubo.Return = returnTerms.join(" + ");
+          console.log("Added default Return expression:", qubo.Return);
         }
       } catch (quboError) {
         console.error("Error getting QUBO data:", quboError);
         throw new Error(`Error when running your algorithm: ${quboError.message}`);
       }
   
-      // Send QUBO to server with more logging
+      // Send QUBO to server
       log("> Sending quantum problem to solver...\n\n");
       console.log("Final QUBO data being sent:", JSON.stringify(qubo, null, 2));
-
+  
       const serverResult = await sendQuboToServer(qubo);
-
-      // Add additional logging to debug the server response
-      console.log("Server raw response:", serverResult);
-
+  
       // Handle error response from server
       if (serverResult.status === 'error') {
         throw new Error(serverResult.error || "Unknown server error");
       }
-
+  
       const responseData = serverResult.data;
-
+  
       // Check for essential response properties
-      if (!responseData || !responseData.sample || !responseData.solution) {
+      if (!responseData) {
         throw new Error("Server returned an invalid response");
       }
-
+  
       // Log the full response for debugging
       log(`> Full server response: ${JSON.stringify(responseData)}\n\n`);
-
+  
       // Display the formatted QUBO data for educational purposes
       log(`> Received quantum solution\n\n`);
       log(formatQuboForLog(responseData, cells) + "\n\n");
   
-      // Extract cell weights from response using our helper function
-      const cellWeights = extractCellWeights(responseData, availableCells, cells);
-  
-      // If no weights were extracted, this is an error that should stop the game
-      if (Object.keys(cellWeights).length === 0) {
-        throw new Error("No valid weights could be extracted from the QUBO model. Cannot determine optimal move.");
-      }
-  
-      log(`> Analyzed ${Object.keys(cellWeights).length} possible moves\n\n`);
-  
-      // Find the best move (highest weight)
-      let bestCell = availableCells[0];
-      let bestWeight = -Infinity;
-  
-      Object.keys(cellWeights).forEach((cellIdx) => {
-        const weight = cellWeights[cellIdx];
-        if (weight > bestWeight) {
-          bestWeight = weight;
-          bestCell = parseInt(cellIdx);
+      // IMPROVED CELL SELECTION LOGIC:
+      // Determine the best move from the server response with multiple fallback methods
+      let bestCell = null;
+      let selectionMethod = "";
+      
+      // Method 1: Try to use the 'return' value if it's an integer cell index
+      if (responseData.return !== undefined && 
+          !isNaN(parseInt(responseData.return)) && 
+          cells[parseInt(responseData.return)] === '') {
+          
+        bestCell = parseInt(responseData.return);
+        selectionMethod = "server return value";
+        console.log(`Using ${selectionMethod} as move: ${bestCell}`);
+      } 
+      
+      // Method 2: Try the solution field which gives the variable name of the solution
+      else if (!bestCell && responseData.solution && 
+               responseData.solution !== 'null' && 
+               responseData.solution !== null) {
+               
+        const match = responseData.solution.match(/x(\d+)/);
+        if (match && !isNaN(parseInt(match[1])) && 
+            cells[parseInt(match[1])] === '') {
+            
+          bestCell = parseInt(match[1]);
+          selectionMethod = "solution field";
+          console.log(`Using ${selectionMethod} as move: ${bestCell}`);
         }
-      });
+      }
+      
+      // Method 3: Try to find any variable with value 1 in the sample data
+      if (!bestCell && responseData.sample) {
+        for (const [key, value] of Object.entries(responseData.sample)) {
+          if (value === 1) {
+            const match = key.match(/x(\d+)/);
+            if (match && !isNaN(parseInt(match[1])) && 
+                cells[parseInt(match[1])] === '') {
+                
+              bestCell = parseInt(match[1]);
+              selectionMethod = "sample data";
+              console.log(`Using ${selectionMethod} as move: ${bestCell}`);
+              break;
+            }
+          }
+        }
+      }
+      
+      // Method 4: Last resort - if all other methods fail, use the first available cell
+      if (!bestCell && availableCells.length > 0) {
+        bestCell = availableCells[0];
+        selectionMethod = "fallback to first available cell";
+        console.log(`Using ${selectionMethod}: ${bestCell}`);
+      }
+      
+      // If no valid move found, throw an error
+      if (bestCell === null || cells[bestCell] !== '') {
+        throw new Error("Could not determine a valid move from the quantum solution");
+      }
       
       // Make the chosen move
       makeMove(bestCell, currentPlayer);
-      log(`> Quantum algorithm selected the ${explainCellPosition(bestCell)}\n\n`);
+      log(`> Quantum algorithm selected the ${explainCellPosition(bestCell)} using ${selectionMethod}\n\n`);
   
     } catch (error) {
       console.error("Quantum Move Error:", error);
       
-      // Single, clear error message instead of multiple logs
       log(`> ⚠️ Quantum Algorithm Error: ${error.message}\n`);
       log(`> Game cannot proceed. Please fix your code and try again.\n\n`);
       
-      // Set an error message that will be displayed to the user
       setQuantumError(error.message);
       
-      // Reset the game to setup state
       setTimeout(() => {
         resetToSetup();
       }, 1000);
     } finally {
-      // Always set processing to false at the end
       setProcessingMove(false);
     }
   };

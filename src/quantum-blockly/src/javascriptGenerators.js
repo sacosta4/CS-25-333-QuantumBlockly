@@ -363,7 +363,7 @@ function ${functionName}(board) {
   const variables = {};
   const constraints = [];
   let objective = "0";
-  let returnExpr = "0*x0 + 1*x1 + 2*x2 + 3*x3 + 4*x4 + 5*x5 + 6*x6 + 7*x7 + 8*x8"; // Default return expression
+  let returnExpr = "0"; 
   
   // Define variables
   ${variables}
@@ -537,7 +537,11 @@ if (objectiveTerms.length > 0) {
   objective = objectiveTerms.join(" + ");
 }
 `;
-  return code;
+return `
+const CENTER_WEIGHT = ${centerWeight};
+const CORNER_WEIGHT = ${cornerWeight};
+const EDGE_WEIGHT = ${edgeWeight};
+`;
 };
 
 // Generator for winning move detection
@@ -588,7 +592,11 @@ if (objectiveTerms.length > 0) {
   objective = objectiveTerms.join(" + ");
 }
 `;
-  return code;
+return `
+const WINNING_MOVE_WEIGHT = ${winWeight};
+const BLOCKING_MOVE_WEIGHT = ${blockWeight};
+const SETUP_MOVE_WEIGHT = ${setupWeight};
+`;
 };
 
 // Generator for default return expression

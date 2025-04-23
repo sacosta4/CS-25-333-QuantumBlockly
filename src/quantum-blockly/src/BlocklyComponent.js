@@ -222,7 +222,6 @@ const extractQUBOData = (workspace) => {
   };
 
 // Function to display QUBO solution
-// Function to display QUBO solution
 function displayQuboSolution(quboResponse, logFunction) {
   if (quboResponse && quboResponse.sample) {
     // Format the solution as a list instead of comma-separated string
@@ -271,107 +270,155 @@ function createQuboForSingleMove(board) {
   const variables = {};
   const constraints = [];
   let objective = "0";
-  let returnExpr = "0*x0 + 1*x1 + 2*x2 + 3*x3 + 4*x4 + 5*x5 + 6*x6 + 7*x7 + 8*x8"; // Default return expression
-  
-  // Step 1: Create binary variables for each empty cell on the board
+  let returnExpr = "";
+
+  // Define weights as variables with default values
+  // These will be replaced by Blockly with actual values from user input
+  const winWeight = 100;     // Replace with WINNING_MOVE_WEIGHT in Blockly
+  const blockWeight = 90;    // Replace with BLOCKING_MOVE_WEIGHT in Blockly
+  const setupWeight = 30;    // Replace with SETUP_MOVE_WEIGHT in Blockly
+  const centerWeight = 9;    // Replace with CENTER_WEIGHT in Blockly
+  const cornerWeight = 7;    // Replace with CORNER_WEIGHT in Blockly
+  const edgeWeight = 5;      // Replace with EDGE_WEIGHT in Blockly
+  const defaultWeight = 1;   // Default value for remaining cells
+
+  // Step 1: Create variables only for empty cells
+  const emptyCells = [];
   for (let i = 0; i < board.length; i++) {
     if (board[i] === '') {
       variables[`x${i}`] = { "type": "Binary" };
+      emptyCells.push(i);
     }
   }
-  
-  // If no empty cells found, add a dummy variable to prevent errors
-  if (Object.keys(variables).length === 0) {
+
+  // Handle edge cases
+  if (emptyCells.length === 0) {
+    // If board is full, add a dummy variable
     variables["x0"] = { "type": "Binary" };
-  }
-  
-  // Step 2: Add constraint to ensure exactly one move is made
-  const varNames = Object.keys(variables);
-  if (varNames.length > 0) {
     constraints.push({
-      "lhs": varNames.join(" + "),
+      "lhs": "x0",
+      "comparison": "=",
+      "rhs": 0
+    });
+    return {
+      "variables": variables,
+      "Constraints": constraints,
+      "Objective": "0",
+      "Return": "0"
+    };
+  } else if (emptyCells.length === 1) {
+    // If only one cell is empty, force that cell
+    const cellIndex = emptyCells[0];
+    constraints.push({
+      "lhs": `x${cellIndex}`,
       "comparison": "=",
       "rhs": 1
     });
+    return {
+      "variables": variables,
+      "Constraints": constraints,
+      "Objective": `1 * x${cellIndex}`,
+      "Return": `${cellIndex}`
+    };
   }
-  
-  // Step 3: Build up objective terms
+
+  // Step 2: Add constraint to ensure exactly one move is made
+  const varNames = Object.keys(variables);
+  constraints.push({
+    "lhs": varNames.join(" + "),
+    "comparison": "=",
+    "rhs": 1
+  });
+
+  // Step 3: Calculate strategic position weights
   const objectiveTerms = [];
+  const processedCells = new Set();
   
-  // Strategic position weights
-  // Center (4) gets highest weight
-  if (board[4] === '') {
-    objectiveTerms.push(`9 * x4`);
-  }
-  
-  // Corners (0, 2, 6, 8) get medium weight
-  const corners = [0, 2, 6, 8];
-  corners.forEach(corner => {
-    if (board[corner] === '') {
-      objectiveTerms.push(`7 * x${corner}`);
-    }
-  });
-  
-  // Edges (1, 3, 5, 7) get lower weight
-  const edges = [1, 3, 5, 7];
-  edges.forEach(edge => {
-    if (board[edge] === '') {
-      objectiveTerms.push(`5 * x${edge}`);
-    }
-  });
-  
-  // Winning move detection
+  // Define winning lines
   const lines = [
     [0, 1, 2], [3, 4, 5], [6, 7, 8], // Rows
     [0, 3, 6], [1, 4, 7], [2, 5, 8], // Columns
     [0, 4, 8], [2, 4, 6]             // Diagonals
   ];
   
+  // Check for winning and blocking opportunities
   lines.forEach(line => {
-    // Count how many of each type in the line
     let playerCells = 0;
     let opponentCells = 0;
-    let emptyCells = [];
+    let emptyCellsInLine = [];
     
     line.forEach(idx => {
       if (board[idx] === 'X') playerCells++;
       else if (board[idx] === 'O') opponentCells++;
-      else if (board[idx] === '') emptyCells.push(idx);
+      else if (board[idx] === '') emptyCellsInLine.push(idx);
     });
     
-    // Winning move: if we have 2 in a row and an empty cell
-    if (playerCells === 2 && emptyCells.length === 1) {
-      objectiveTerms.push(`10 * x${emptyCells[0]}`);
+    if (emptyCellsInLine.length === 1) {
+      const cell = emptyCellsInLine[0];
+      // Winning move (2 of our pieces + empty cell)
+      if (playerCells === 2) {
+        objectiveTerms.push(`${winWeight} * x${cell}`);
+        processedCells.add(cell);
+      }
+      // Blocking move (2 of opponent's pieces + empty cell)
+      else if (opponentCells === 2) {
+        objectiveTerms.push(`${blockWeight} * x${cell}`);
+        processedCells.add(cell);
+      }
     }
-    // Blocking move: if opponent has 2 in a row and we can block
-    else if (opponentCells === 2 && emptyCells.length === 1) {
-      objectiveTerms.push(`8 * x${emptyCells[0]}`);
-    }
-    // Opportunity: if we have 1 in a row and 2 empty cells
-    else if (playerCells === 1 && emptyCells.length === 2) {
-      emptyCells.forEach(cell => {
-        objectiveTerms.push(`1.5 * x${cell}`);
+    // Setup moves (1 of our pieces + 2 empty cells)
+    else if (playerCells === 1 && emptyCellsInLine.length === 2) {
+      emptyCellsInLine.forEach(cell => {
+        if (!processedCells.has(cell)) {
+          objectiveTerms.push(`${setupWeight} * x${cell}`);
+          processedCells.add(cell);
+        }
       });
     }
   });
   
-  // Combine all objective terms - CRITICAL: We want to maximize these values,
-  // but for QUBO we need to negate for minimization. The server API will handle this.
+  // Position-based strategy
+  // Center is highest strategic value when no winning/blocking moves
+  if (board[4] === '' && !processedCells.has(4)) {
+    objectiveTerms.push(`${centerWeight} * x4`);
+    processedCells.add(4);
+  }
+  
+  // Corners are medium value
+  [0, 2, 6, 8].forEach(corner => {
+    if (board[corner] === '' && !processedCells.has(corner)) {
+      objectiveTerms.push(`${cornerWeight} * x${corner}`);
+      processedCells.add(corner);
+    }
+  });
+  
+  // Edges are lower value
+  [1, 3, 5, 7].forEach(edge => {
+    if (board[edge] === '' && !processedCells.has(edge)) {
+      objectiveTerms.push(`${edgeWeight} * x${edge}`);
+      processedCells.add(edge);
+    }
+  });
+  
+  // Set a default weight for any remaining cells
+  emptyCells.forEach(cell => {
+    if (!processedCells.has(cell)) {
+      objectiveTerms.push(`${defaultWeight} * x${cell}`);
+    }
+  });
+  
+  // Join all terms to form the objective function
   if (objectiveTerms.length > 0) {
     objective = objectiveTerms.join(" + ");
   }
   
-  // Step 4: Build the return expression to map variables to their indices
-  const returnTerms = [];
-  Object.keys(variables).forEach(varName => {
-    // Extract the index from the variable name (x0, x1, etc.)
-    const index = varName.replace('x', '');
-    returnTerms.push(`${index} * ${varName}`);
-  });
-  
-  if (returnTerms.length > 0) {
-    returnExpr = returnTerms.join(" + ");
+  // Construct a Python-style conditional return expression
+  const cellIndexExpressions = [];
+  for (const varName of varNames) {
+    const cellIndex = parseInt(varName.replace("x", ""));
+    cellIndexExpressions.push(`${cellIndex} if ${varName} else 0`);
   }
+  returnExpr = cellIndexExpressions.join(" + ");
   
   // Return the complete QUBO model
   return {
