@@ -269,152 +269,59 @@ function createQuboForSingleMove(board) {
   // Initialize collections for PyQUBO model
   const variables = {};
   const constraints = [];
-  let objectiveTerms = [];
   let objective = "0";
   let returnExpr = "0";
 
-  // STEP 1: Create variables only for empty cells
+  // Create variables ONLY for empty cells
   for (let i = 0; i < board.length; i++) {
     if (board[i] === '') {
       variables[`x${i}`] = { "type": "Binary" };
     }
   }
 
-  // If no empty cells, add a dummy variable to prevent errors
-  if (Object.keys(variables).length === 0) {
-    variables["x0"] = { "type": "Binary" };
-    // Force this variable to be 0 since there are no valid moves
+  // Only proceed if there are empty cells
+  if (Object.keys(variables).length > 0) {
+    // Add constraint to ensure exactly one move is made
     constraints.push({
-      "lhs": "x0",
+      "lhs": Object.keys(variables).join(" + "),
       "comparison": "=",
-      "rhs": 0
+      "rhs": 1
     });
+
+    // Set objective function - only for available cells
+    let objectiveTerms = [];
     
-    return {
-      "variables": variables,
-      "Constraints": constraints,
-      "Objective": "0",
-      "Return": "0"
-    };
-  }
-
-  // STEP 2: Add constraint to ensure exactly one move is made
-  const varNames = Object.keys(variables);
-  constraints.push({
-    "lhs": varNames.join(" + "),
-    "comparison": "=",
-    "rhs": 1
-  });
-
-  // STEP 3: Define weights for different strategic positions
-  // These values will be directly used in the objective function
-  const WINNING_MOVE_WEIGHT = 100;  // Highest priority - winning move
-  const BLOCKING_MOVE_WEIGHT = 90;  // High priority - block opponent
-  const SETUP_MOVE_WEIGHT = 30;     // Medium priority - set up future win
-  const CENTER_WEIGHT = 9;          // Strong position
-  const CORNER_WEIGHT = 7;          // Good position
-  const EDGE_WEIGHT = 5;            // Less optimal position
-  const DEFAULT_WEIGHT = 1;         // Default for any cell
-
-  // Keep track of cells we've already assigned weights to
-  const processedCells = new Set();
-
-  // STEP 4: Analyze winning lines for strategic opportunities
-  const lines = [
-    [0, 1, 2], [3, 4, 5], [6, 7, 8], // Rows
-    [0, 3, 6], [1, 4, 7], [2, 5, 8], // Columns
-    [0, 4, 8], [2, 4, 6]             // Diagonals
-  ];
-
-  // Check each line for winning or blocking opportunities
-  lines.forEach(line => {
-    // Count how many of each type in the line
-    let playerCells = 0;
-    let opponentCells = 0;
-    let emptyCells = [];
-    
-    line.forEach(idx => {
-      if (board[idx] === 'X') playerCells++;
-      else if (board[idx] === 'O') opponentCells++;
-      else if (board[idx] === '') emptyCells.push(idx);
-    });
-    
-    if (emptyCells.length === 1) {
-      const cell = emptyCells[0];
+    // Strategic position weights
+    Object.keys(variables).forEach(varName => {
+      const cellIndex = parseInt(varName.replace('x', ''));
+      let weight = 0;
       
-      // Winning move: if we have 2 in a row and an empty cell
-      if (playerCells === 2) {
-        objectiveTerms.push(`${WINNING_MOVE_WEIGHT} * x${cell}`);
-        processedCells.add(cell);
+      if (cellIndex === 4) {
+        weight = 9;  // Center
+      } else if ([0, 2, 6, 8].includes(cellIndex)) {
+        weight = 7;  // Corners
+      } else {
+        weight = 5;  // Edges
       }
-      // Blocking move: if opponent has 2 in a row and we can block
-      else if (opponentCells === 2) {
-        objectiveTerms.push(`${BLOCKING_MOVE_WEIGHT} * x${cell}`);
-        processedCells.add(cell);
-      }
-    }
-    // Setup move: if we have 1 in a row and 2 empty cells
-    else if (playerCells === 1 && emptyCells.length === 2) {
-      emptyCells.forEach(cell => {
-        if (!processedCells.has(cell)) {
-          objectiveTerms.push(`${SETUP_MOVE_WEIGHT} * x${cell}`);
-          processedCells.add(cell);
-        }
-      });
-    }
-  });
-
-  // STEP 5: Assign position-based strategic weights
-  // Center position (strongest strategic choice)
-  if (board[4] === '' && !processedCells.has(4)) {
-    objectiveTerms.push(`${CENTER_WEIGHT} * x4`);
-    processedCells.add(4);
-  }
-  
-  // Corner positions (strong strategic choices)
-  const corners = [0, 2, 6, 8];
-  corners.forEach(corner => {
-    if (board[corner] === '' && !processedCells.has(corner)) {
-      objectiveTerms.push(`${CORNER_WEIGHT} * x${corner}`);
-      processedCells.add(corner);
-    }
-  });
-  
-  // Edge positions (moderate strategic choices)
-  const edges = [1, 3, 5, 7];
-  edges.forEach(edge => {
-    if (board[edge] === '' && !processedCells.has(edge)) {
-      objectiveTerms.push(`${EDGE_WEIGHT} * x${edge}`);
-      processedCells.add(edge);
-    }
-  });
-  
-  // STEP 6: Assign default weight to any remaining cells
-  // Ensure all empty cells have some weight
-  for (let i = 0; i < board.length; i++) {
-    if (board[i] === '' && !processedCells.has(i)) {
-      objectiveTerms.push(`${DEFAULT_WEIGHT} * x${i}`);
-    }
-  }
-  
-  // Combine all terms for the objective function
-  if (objectiveTerms.length > 0) {
+      
+      objectiveTerms.push(`${weight} * ${varName}`);
+    });
+    
     objective = objectiveTerms.join(" + ");
+
+    // Set return expression - maps each variable to its position index
+    const returnTerms = [];
+    Object.keys(variables).forEach(varName => {
+      const index = varName.replace('x', '');
+      returnTerms.push(`${index} * ${varName}`);
+    });
+    
+    if (returnTerms.length > 0) {
+      returnExpr = returnTerms.join(" + ");
+    }
   }
 
-  // STEP 7: Create return expression that returns the cell index
-  // This is crucial for interpreting the result correctly
-  const returnTerms = [];
-  Object.keys(variables).forEach(varName => {
-    const index = varName.replace('x', '');
-    returnTerms.push(`${index} * ${varName}`);
-  });
-  
-  if (returnTerms.length > 0) {
-    returnExpr = returnTerms.join(" + ");
-  }
-
-  // Return the complete QUBO model with all required fields
+  // Return the complete QUBO model
   return {
     "variables": variables,
     "Constraints": constraints,

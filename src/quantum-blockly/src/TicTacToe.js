@@ -349,192 +349,147 @@ function extractCellWeights(responseData, currentBoard) {
   }, [currentPlayer, gameSetup, gameOver, processingMove, nextGameReady, cells]);
 
   // Main function to fetch quantum move
-  const fetchQuantumMove = async () => {
-    // If already processing a move or game is over, exit early
-    if (gameOver || nextGameReady) {
-      console.log("Quantum move prevented - game state doesn't allow moves");
+const fetchQuantumMove = async () => {
+  // If already processing a move or game is over, exit early
+  if (gameOver || nextGameReady) {
+    console.log("Quantum move prevented - game state doesn't allow moves");
+    setProcessingMove(false);
+    return;
+  }
+  
+  setQuantumError(null);
+  let availableCells = [];
+
+  try {
+    // Define available cells first
+    availableCells = cells
+      .map((cell, index) => (cell === '' ? index : null))
+      .filter((index) => index !== null);
+
+    if (availableCells.length === 0) {
+      log('> No available moves to make\n\n');
       setProcessingMove(false);
       return;
     }
-    
-    setQuantumError(null);
-    let availableCells = [];
-  
-    try {
-      // Define available cells first
-      availableCells = cells
-        .map((cell, index) => (cell === '' ? index : null))
-        .filter((index) => index !== null);
-  
-      if (availableCells.length === 0) {
-        log('> No available moves to make\n\n');
-        setProcessingMove(false);
-        return;
-      }
-  
-      // Basic validation of QUBO code
-      if (!quboCode || typeof quboCode !== "string" || quboCode.trim() === '') {
-        throw new Error("No Blockly code found. Please create a QUBO model first.");
-      }
-  
-      // Check if code contains the required function
-      if (!quboCode.includes('createQuboForSingleMove')) {
-        throw new Error("Function 'createQuboForSingleMove' not found in your code.");
-      }
-      
-      log('> Evaluating your quantum algorithm...\n\n');
-  
-      // Create function in a safer way
-      const functionCreator = new Function('board', `
-        try {
-          ${quboCode}
-          return typeof createQuboForSingleMove === 'function' ? createQuboForSingleMove : null;
-        } catch (err) {
-          console.error("Function evaluation error:", err);
-          return null;
-        }
-      `);
-      
-      const createQuboForSingleMove = functionCreator(cells);
-  
-      if (typeof createQuboForSingleMove !== 'function') {
-        throw new Error("Could not create a valid function from your code");
-      }
-  
-      // Get QUBO data
-      let qubo;
-      try {
-        qubo = createQuboForSingleMove(cells);
-        console.log("QUBO data returned from function:", JSON.stringify(qubo, null, 2));
-        
-        // Validate QUBO
-        if (!qubo || typeof qubo !== 'object') {
-          throw new Error("Your algorithm must return a valid QUBO object");
-        }
-        
-        // Ensure the QUBO has the correct format
-        if (!qubo.variables || Object.keys(qubo.variables).length === 0) {
-          throw new Error("No variables defined in your QUBO model");
-        }
-        
-        // Fix missing Return expression
-        if (!qubo.Return || typeof qubo.Return !== 'string' || qubo.Return.trim() === '') {
-          const returnTerms = [];
-          Object.keys(qubo.variables).forEach(varName => {
-            const index = varName.replace('x', '');
-            returnTerms.push(`${index} * ${varName}`);
-          });
-          qubo.Return = returnTerms.join(" + ");
-          console.log("Added default Return expression:", qubo.Return);
-        }
-      } catch (quboError) {
-        console.error("Error getting QUBO data:", quboError);
-        throw new Error(`Error when running your algorithm: ${quboError.message}`);
-      }
-  
-      // Send QUBO to server
-      log("> Sending quantum problem to solver...\n\n");
-      console.log("Final QUBO data being sent:", JSON.stringify(qubo, null, 2));
-  
-      const serverResult = await sendQuboToServer(qubo);
-  
-      // Handle error response from server
-      if (serverResult.status === 'error') {
-        throw new Error(serverResult.error || "Unknown server error");
-      }
-  
-      const responseData = serverResult.data;
-  
-      // Check for essential response properties
-      if (!responseData) {
-        throw new Error("Server returned an invalid response");
-      }
-  
-      // Log the full response for debugging
-      log(`> Full server response: ${JSON.stringify(responseData)}\n\n`);
-  
-      // Display the formatted QUBO data for educational purposes
-      log(`> Received quantum solution\n\n`);
-      log(formatQuboForLog(responseData, cells) + "\n\n");
-  
-      // IMPROVED CELL SELECTION LOGIC:
-      // Determine the best move from the server response with multiple fallback methods
-      let bestCell = null;
-      let selectionMethod = "";
-      
-      // Method 1: Try to use the 'return' value if it's an integer cell index
-      if (responseData.return !== undefined && 
-          !isNaN(parseInt(responseData.return)) && 
-          cells[parseInt(responseData.return)] === '') {
-          
-        bestCell = parseInt(responseData.return);
-        selectionMethod = "server return value";
-        console.log(`Using ${selectionMethod} as move: ${bestCell}`);
-      } 
-      
-      // Method 2: Try the solution field which gives the variable name of the solution
-      else if (!bestCell && responseData.solution && 
-               responseData.solution !== 'null' && 
-               responseData.solution !== null) {
-               
-        const match = responseData.solution.match(/x(\d+)/);
-        if (match && !isNaN(parseInt(match[1])) && 
-            cells[parseInt(match[1])] === '') {
-            
-          bestCell = parseInt(match[1]);
-          selectionMethod = "solution field";
-          console.log(`Using ${selectionMethod} as move: ${bestCell}`);
-        }
-      }
-      
-      // Method 3: Try to find any variable with value 1 in the sample data
-      if (!bestCell && responseData.sample) {
-        for (const [key, value] of Object.entries(responseData.sample)) {
-          if (value === 1) {
-            const match = key.match(/x(\d+)/);
-            if (match && !isNaN(parseInt(match[1])) && 
-                cells[parseInt(match[1])] === '') {
-                
-              bestCell = parseInt(match[1]);
-              selectionMethod = "sample data";
-              console.log(`Using ${selectionMethod} as move: ${bestCell}`);
-              break;
-            }
-          }
-        }
-      }
-      
-      // Method 4: Last resort - if all other methods fail, use the first available cell
-      if (!bestCell && availableCells.length > 0) {
-        bestCell = availableCells[0];
-        selectionMethod = "fallback to first available cell";
-        console.log(`Using ${selectionMethod}: ${bestCell}`);
-      }
-      
-      // If no valid move found, throw an error
-      if (bestCell === null || cells[bestCell] !== '') {
-        throw new Error("Could not determine a valid move from the quantum solution");
-      }
-      
-      // Make the chosen move
-      makeMove(bestCell, currentPlayer);
-      log(`> Quantum algorithm selected the ${explainCellPosition(bestCell)} using ${selectionMethod}\n\n`);
-  
-    } catch (error) {
-      console.error("Quantum Move Error:", error);
-      
-      log(`> ⚠️ Quantum Algorithm Error: ${error.message}\n`);
-      log(`> Game cannot proceed. Please fix your code and try again.\n\n`);
-      
-      setQuantumError(error.message);
-      
-      setTimeout(() => {
-        resetToSetup();
-      }, 1000);
-    } finally {
-      setProcessingMove(false);
+
+    // Basic validation of QUBO code
+    if (!quboCode || typeof quboCode !== "string" || quboCode.trim() === '') {
+      throw new Error("No Blockly code found. Please create a QUBO model first.");
     }
-  };
+
+    // Check if code contains the required function
+    if (!quboCode.includes('createQuboForSingleMove')) {
+      throw new Error("Function 'createQuboForSingleMove' not found in your code.");
+    }
+    
+    log('> Evaluating your quantum algorithm...\n\n');
+
+    // Create function in a safer way
+    const functionCreator = new Function('board', `
+      try {
+        ${quboCode}
+        return typeof createQuboForSingleMove === 'function' ? createQuboForSingleMove : null;
+      } catch (err) {
+        console.error("Function evaluation error:", err);
+        return null;
+      }
+    `);
+    
+    const createQuboForSingleMove = functionCreator(cells);
+
+    if (typeof createQuboForSingleMove !== 'function') {
+      throw new Error("Could not create a valid function from your code");
+    }
+
+    // Get QUBO data
+    let qubo;
+    try {
+      qubo = createQuboForSingleMove(cells);
+      console.log("QUBO data returned from function:", JSON.stringify(qubo, null, 2));
+      
+      // Validate QUBO
+      if (!qubo || typeof qubo !== 'object') {
+        throw new Error("Your algorithm must return a valid QUBO object");
+      }
+      
+      // Ensure the QUBO has the correct format
+      if (!qubo.variables || Object.keys(qubo.variables).length === 0) {
+        throw new Error("No variables defined in your QUBO model");
+      }
+      
+      // Fix missing Return expression
+      if (!qubo.Return || typeof qubo.Return !== 'string' || qubo.Return.trim() === '') {
+        const returnTerms = [];
+        Object.keys(qubo.variables).forEach(varName => {
+          const index = varName.replace('x', '');
+          returnTerms.push(`${index} * ${varName}`);
+        });
+        qubo.Return = returnTerms.join(" + ");
+        console.log("Added default Return expression:", qubo.Return);
+      }
+    } catch (quboError) {
+      console.error("Error getting QUBO data:", quboError);
+      throw new Error(`Error when running your algorithm: ${quboError.message}`);
+    }
+
+    // Send QUBO to server
+    log("> Sending quantum problem to solver...\n\n");
+    console.log("Final QUBO data being sent:", JSON.stringify(qubo, null, 2));
+
+    const serverResult = await sendQuboToServer(qubo);
+
+    // Handle error response from server
+    if (serverResult.status === 'error') {
+      throw new Error(serverResult.error || "Unknown server error");
+    }
+
+    const responseData = serverResult.data;
+
+    // Check for essential response properties
+    if (!responseData) {
+      throw new Error("Server returned an invalid response");
+    }
+
+    // Log the full response for debugging
+    log(`> Full server response: ${JSON.stringify(responseData)}\n\n`);
+
+    // Display the formatted QUBO data for educational purposes
+    log(`> Received quantum solution\n\n`);
+    log(formatQuboForLog(responseData, cells) + "\n\n");
+
+    // SIMPLIFIED CELL SELECTION LOGIC - Use only the primary method
+    let bestCell = null;
+    
+    // Only use the 'return' value if it's an integer cell index
+    if (responseData.return !== undefined && 
+        !isNaN(parseInt(responseData.return)) && 
+        cells[parseInt(responseData.return)] === '') {
+        
+      bestCell = parseInt(responseData.return);
+      log(`> Quantum algorithm selected cell ${bestCell}\n\n`);
+    } else {
+      throw new Error("Could not determine a valid move from the quantum solution");
+    }
+    
+    // Make the chosen move
+    makeMove(bestCell, currentPlayer);
+    log(`> Quantum algorithm selected the ${explainCellPosition(bestCell)}\n\n`);
+
+  } catch (error) {
+    console.error("Quantum Move Error:", error);
+    
+    log(`> ⚠️ Quantum Algorithm Error: ${error.message}\n`);
+    log(`> Game cannot proceed. Please fix your code and try again.\n\n`);
+    
+    setQuantumError(error.message);
+    
+    setTimeout(() => {
+      resetToSetup();
+    }, 1000);
+  } finally {
+    setProcessingMove(false);
+  }
+};
 
   // Function to handle CPU moves
   const handleCPUMove = (difficulty) => {
