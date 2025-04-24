@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import './Mancala copy.css';
+import './Mancala';
 
 const Mancala = ({ quboCode, log }) => {
   const [gameSetup, setGameSetup] = useState(false);
