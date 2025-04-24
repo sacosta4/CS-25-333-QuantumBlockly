@@ -107,10 +107,7 @@ function MainComponent() {
               <Connect4 quboCode={code} log={logHandler}/>
             )}
             {game === 2 && (
-              <div className="container">
-                <h2>Mancala Game</h2>
-                <p>Coming soon...</p>
-              </div>
+              <Connect4 quboCode={code} log={logHandler}/>
             )}
           </div>
           
