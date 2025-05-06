@@ -462,13 +462,16 @@ const fetchQuantumMove = async () => {
     
     // Only use the 'return' value if it's an integer cell index
     if (responseData.return !== undefined && 
-        !isNaN(parseInt(responseData.return)) && 
-        cells[parseInt(responseData.return)] === '') {
+        !isNaN(parseInt(responseData.return))) {
         
       bestCell = parseInt(responseData.return);
       log(`> Quantum algorithm selected cell ${bestCell}\n\n`);
     } else {
       throw new Error("Could not determine a valid move from the quantum solution");
+    }
+
+    if (cells[parseInt(responseData.return)] !== '') {
+      makeMove((Math.floor(Math.random() * 9)), currentPlayer);
     }
     
     // Make the chosen move
