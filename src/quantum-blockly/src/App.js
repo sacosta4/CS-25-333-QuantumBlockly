@@ -15,6 +15,7 @@ function MainComponent() {
   const [log, setLog] = useState('');
   const [logVisible, setLogVisible] = useState(true);
   const [codeVisible, setCodeVisible] = useState(true);
+  const [showInstructions, setShowInstructions] = useState(false); //state for showing the popup
 
   const codeHandler = (code) => { //this code handler will be passed into the BlocklyComponent, and will set the state of the code for the main component
     setCode(code);
@@ -57,6 +58,11 @@ function MainComponent() {
     if (game === 2) return "mancala";
     return "tic";
   };
+
+  // Toggle instructions popup
+  const toggleInstructions = () => {
+    setShowInstructions(prev => !prev);
+  };
   
   // returns UI of main component (Blockly Component, Code Display, and Standard Output Display)
   return (
@@ -77,7 +83,31 @@ function MainComponent() {
             <option value="mancala">Mancala</option>
           </select>
         </label>
+
+        {/* New instructions button */}
+        <button onClick={toggleInstructions} style={{ marginLeft: '20px' }}>
+          Instructions
+        </button>
       </div>
+
+      {/* Instructions popup */}
+      {showInstructions && (
+        <div className="popup-overlay">
+          <div className="popup-content">
+            <h2>How to Create a QUBO Model with Blocks</h2>
+            <ul>
+              <li>Use the QUBO Model block to set up the structure of the model.</li>
+              <li>Use variable blocks to define quantum variables like spins and binaries.</li>
+              <li>Add a constraint like <code>x0 + x1 + x2 + ... = 1</code> to allow one move.</li>
+              <li>Set the objective function to assign constants to cells (e.g., <code>5 * x0 + 10 * x4</code>).</li>
+              <li>Include a <strong>Return</strong> expression like <code>0 * x0 + 3 * x1 + 7 * x5</code>.</li>
+              <li>Click "Generate Code" and test it with a game.</li>
+            </ul>
+            <button onClick={toggleInstructions}>Close</button>
+          </div>
+        </div>
+      )}
+
       
       <div className="main">
         <div className="vertical-div">
